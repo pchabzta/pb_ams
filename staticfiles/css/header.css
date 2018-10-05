@@ -68,12 +68,15 @@ body {
     color: #fff;
 }
 
-
-ul.messages li.success,
 ul.messages li.warning,
-ul.messages li.error,
-ul.messages li.info {
+ul.messages li.error {
     list-style: disc;
     color: red;
+}
+
+ul.messages li.success,
+ul.messages li.info {
+    list-style: disc;
+    color: green;
 }
 
