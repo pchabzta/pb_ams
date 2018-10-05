@@ -1,0 +1,88 @@
+from django.db import models
+from django.conf import settings
+from django.urls import reverse
+
+
+class Room_type(models.Model):
+    desc = models.CharField(max_length=250)
+    rate = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+
+    def __str__(self):
+        return self.desc
+
+
+class Room(models.Model):
+    room_type = models.ForeignKey(Room_type, on_delete=models.CASCADE)
+    room_no = models.CharField(max_length=4)
+
+    def __str__(self):
+        return self.room_no
+
+
+class Extra(models.Model):
+    desc = models.CharField(max_length=100)
+    cpu = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+
+    def __str__(self):
+        return self.desc
+
+
+class Billing(models.Model):
+    STATUS_CHOICE = (('open', 'OPEN'), ('close', 'CLOSE'),)
+
+    bill_ref = models.CharField(max_length=6)
+    bill_date = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=5, choices=STATUS_CHOICE, default='open')
+    tenant_name = models.CharField(max_length=100)
+    room_no = models.CharField(max_length=4)
+    room_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    room_acc_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    electricity_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    water_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    common_ser_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    other_ser_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    overdue_amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    adjust = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    bill_total = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    payment_date = models.DateField(blank=True, null=True)
+    payment_amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    cf_amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ('-bill_date',)
+
+    def __str__(self):
+        return 'Bill for room number: {} Status: {}'.format(self.room_no, self.status)
+        # return self.bill_ref
+
+    def get_absolute_url(self):
+        return reverse('pay_rent', args=[str(self.bill_ref)])
+
+
+class TenantProfile(models.Model):
+    tenant = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    pin = models.CharField(max_length=13, unique=True)
+    phone = models.CharField(max_length=10)
+    room_no = models.OneToOneField(Room, on_delete=models.CASCADE, unique=True)
+    term = models.PositiveSmallIntegerField(default=12)
+    start_date = models.DateField()
+    end_date = models.DateField(blank=True, null=True)
+    deposit = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    deduct = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    cum_ovd = models.DecimalField(max_digits=7, decimal_places=2, blank=True, default=0)
+    adjust = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    photo = models.ImageField(upload_to='users/%Y/%m/%d/', blank=True)
+    extra = models.ManyToManyField(Extra)
+
+    bill_date = models.DateField(auto_now=True, blank=True)
+    elec_unit = models.IntegerField(blank=True, null=True)  # use placeholder
+    water_unit = models.IntegerField(blank=True, null=True)
+    misc_cost = models.IntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return 'Profile for user {}'.format(self.tenant.first_name)
+
+    def get_absolute_url(self):
+        return reverse('fill_bill', args=[self.room_no])

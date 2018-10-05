@@ -1,0 +1,407 @@
+{% extends "ams_admin_base_html.html" %}
+{% load static %}
+{% load humanize %}
+{% load ams_tags %}
+
+{% block title %}Payment{% endblock %}
+
+{% block script %}
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+
+    <link rel="stylesheet" href={% static "js/jquery-ui.css" %}>
+    <script src={% static "js/jquery-3.3.1.js" %}></script>
+    <script src={% static "js/jquery-ui.js" %}></script>
+
+    <script>
+        $(document).ready(function () {
+
+            $(".pay_date").datepicker(
+                {
+                    showAnim: 'slide',
+                    {#dateFormat: 'D: d-M-yy',#}
+                    {#dateFormat:'dd-mm-yy',#}
+                    {#dateFormat:'mm/dd/yy',#}
+                    changeMonth: true,
+                    changeYear: true,
+                });
+        });
+
+    </script>
+
+{% endblock %}
+
+{% block style %}
+
+    <style>
+        #hx {
+            float: left;
+
+        }
+
+        #dx {
+            clear: both;
+
+        }
+
+        #hnam {
+
+            display: block;
+            width: 12em;
+            color: white;
+            background-color: blue;
+            float: left;
+            text-align: center;
+            line-height: 1.5em;
+        }
+
+        #hrn {
+            display: block;
+            width: 3.5em;
+            color: white;
+            background-color: red;
+            float: left;
+            text-align: center;
+            line-height: 1.5em;
+        }
+
+        #hbt {
+            display: block;
+            width: 5em;
+            color: white;
+            background-color: blue;
+            float: left;
+            text-align: right;
+            line-height: 1.5em;
+        }
+
+        #hrc, #hac, #hec, #hwc, #hcsc, #hosc, #hoth, #hovd {
+            display: block;
+            width: 3.5em;
+            color: white;
+            background-color: blue;
+            float: left;
+            text-align: right;
+            line-height: 1.5em;
+        }
+
+        .nam {
+            display: block;
+            width: 12em;
+            text-align: left;
+            float: left;
+            line-height: 1.5em;
+            color: #003eff;
+        }
+
+        .rn {
+            display: block;
+            width: 3.5em;
+            text-align: center;
+            color: #de1710;
+            float: left;
+            line-height: 1.5em;
+        }
+
+        .rc, .ra, .ec, .wc, .csc, .osc, .oth, .ovd {
+            display: block;
+            width: 3.5em;
+            text-align: right;
+            float: left;
+            line-height: 1.5em;
+        }
+
+        .bt {
+            display: block;
+            width: 5em;
+            text-align: right;
+            float: left;
+            line-height: 1.5em;
+        }
+
+        .paid_amount, .pay_date {
+            width: 8em;
+            text-align: center;
+            color: red;
+            background-color: lightskyblue;
+            margin-left: .25em;
+            line-height: 1.5em;
+        }
+
+        div.submit button {
+            width: 6em;
+            font-weight: bold;
+            font-size: large;
+            background-color: red;
+            color: white;
+            margin-top: .5em;
+            padding: .3em;
+        }
+
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+    <h2>Payment</h2>
+
+
+    <div id="hx">
+        <label id="hnam">NAME</label>
+        <label id="hrn">ROOM</label>
+        <label id="hrc">RC</label>
+        <label id="hac">RAC</label>
+        <label id="hec">EC</label>
+        <label id="hwc">WC</label>
+        <label id="hcsc">CSC</label>
+        <label id="hosc">OSC</label>
+        <label id="hoth">OTH</label>
+        <label id="hovd">OVD</label>
+        <label id="hbt">TOTAL</label>
+        <br>
+    </div>
+    <div id="dx">
+        <form action="." method="post">
+            {% csrf_token %}
+            {% for tenant_bill in bills %}
+                {% if tenant_bill.room_no == '101A' %}
+                    {% display_tenant_bill_data '101A'%}
+                    {{ rm101a_form.payment_amount }}
+                    {{ rm101a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+
+                {% if tenant_bill.room_no == '102A' %}
+                    {% display_tenant_bill_data '102A' %}
+                    {{ rm102a_form.payment_amount }}
+                    {{ rm102a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '103A' %}
+                    {% display_tenant_bill_data '103A' %}
+                    {{ rm103a_form.payment_amount }}
+                    {{ rm103a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '104A' %}
+                    {% display_tenant_bill_data '104A' %}
+                    {{ rm104a_form.payment_amount }}
+                    {{ rm104a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '105A' %}
+                    {% display_tenant_bill_data '105A' %}
+                    {{ rm105a_form.payment_amount }}
+                    {{ rm105a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '106A' %}
+                    {% display_tenant_bill_data '106A' %}
+                    {{ rm106a_form.payment_amount }}
+                    {{ rm106a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '201A' %}
+                    {% display_tenant_bill_data '201A' %}
+                    {{ rm201a_form.payment_amount }}
+                    {{ rm201a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '202A' %}
+                    {% display_tenant_bill_data '202A' %}
+                    {{ rm202a_form.payment_amount }}
+                    {{ rm202a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '203A' %}
+                    {% display_tenant_bill_data '203A' %}
+                    {{ rm203a_form.payment_amount }}
+                    {{ rm203a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '204A' %}
+                    {% display_tenant_bill_data '204A' %}
+                    {{ rm204a_form.payment_amount }}
+                    {{ rm204a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '205A' %}
+                    {% display_tenant_bill_data '205A' %}
+                    {{ rm205a_form.payment_amount }}
+                    {{ rm205a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '206A' %}
+                    {% display_tenant_bill_data '206A' %}
+                    {{ rm206a_form.payment_amount }}
+                    {{ rm206a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '301A' %}
+                    {% display_tenant_bill_data '301A' %}
+                    {{ rm301a_form.payment_amount }}
+                    {{ rm301a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '302A' %}
+                    {% display_tenant_bill_data '302A' %}
+                    {{ rm302a_form.payment_amount }}
+                    {{ rm302a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '303A' %}
+                    {% display_tenant_bill_data '303A' %}
+                    {{ rm303a_form.payment_amount }}
+                    {{ rm303a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '304A' %}
+                    {% display_tenant_bill_data '304A' %}
+                    {{ rm304a_form.payment_amount }}
+                    {{ rm304a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '305A' %}
+                    {% display_tenant_bill_data '305A' %}
+                    {{ rm305a_form.payment_amount }}
+                    {{ rm305a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '306A' %}
+                    {% display_tenant_bill_data '306A' %}
+                    {{ rm306a_form.payment_amount }}
+                    {{ rm306a_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '201B' %}
+                    {% display_tenant_bill_data '201B' %}
+                    {{ rm201b_form.payment_amount }}
+                    {{ rm201b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '202B' %}
+                    {% display_tenant_bill_data '202B' %}
+                    {{ rm202b_form.payment_amount }}
+                    {{ rm202b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '203B' %}
+                    {% display_tenant_bill_data '203B' %}
+                    {{ rm203b_form.payment_amount }}
+                    {{ rm203b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '204B' %}
+                    {% display_tenant_bill_data '204B' %}
+                    {{ rm204b_form.payment_amount }}
+                    {{ rm204b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '205B' %}
+                    {% display_tenant_bill_data '205B' %}
+                    {{ rm205b_form.payment_amount }}
+                    {{ rm205b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '301B' %}
+                    {% display_tenant_bill_data '301B' %}
+                    {{ rm301b_form.payment_amount }}
+                    {{ rm301b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '302B' %}
+                    {% display_tenant_bill_data '302B' %}
+                    {{ rm302b_form.payment_amount }}
+                    {{ rm302b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '303B' %}
+                    {% display_tenant_bill_data '303B' %}
+                    {{ rm303b_form.payment_amount }}
+                    {{ rm303b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '304B' %}
+                    {% display_tenant_bill_data '304B' %}
+                    {{ rm304b_form.payment_amount }}
+                    {{ rm304b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '305B' %}
+                    {% display_tenant_bill_data '305B' %}
+                    {{ rm305b_form.payment_amount }}
+                    {{ rm305b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '401B' %}
+                    {% display_tenant_bill_data '401B' %}
+                    {{ rm401b_form.payment_amount }}
+                    {{ rm401b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '402B' %}
+                    {% display_tenant_bill_data '402B' %}
+                    {{ rm402b_form.payment_amount }}
+                    {{ rm402b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '403B' %}
+                    {% display_tenant_bill_data '403B' %}
+                    {{ rm403b_form.payment_amount }}
+                    {{ rm403b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '404B' %}
+                    {% display_tenant_bill_data '404B' %}
+                    {{ rm404b_form.payment_amount }}
+                    {{ rm404b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+                {% if tenant_bill.room_no == '405B' %}
+                    {% display_tenant_bill_data '405B' %}
+                    {{ rm405b_form.payment_amount }}
+                    {{ rm405b_form.payment_date }}
+                    <br>
+                {% endif %}
+
+            {% endfor %}
+            <div class="submit">
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </div>
+
+{% endblock %}
+

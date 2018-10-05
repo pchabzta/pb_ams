@@ -1,0 +1,82 @@
+{% extends "ams_admin_base_html.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Room type and rate{% endblock %}
+
+{% block script %}
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+{% endblock %}
+
+{% block style %}
+
+    <style>
+
+        div #hx {
+            float: left;
+        }
+
+        div #hx #hdesc {
+
+            display: block;
+            width: 31em;
+            color: white;
+            background-color: blue;
+            float: left;
+            text-align: left;
+            font-size: medium;
+        }
+
+        div #hx #hrate {
+
+            display: block;
+            width: 6em;
+            color: white;
+            background-color: blue;
+            float: left;
+            text-align: right;
+            font-size: medium;
+        }
+
+        div #da {
+            clear: both;
+        }
+
+        div #da .desc {
+            display: block;
+            width: 31em;
+            text-align: left;
+            float: left;
+            font-size: medium;
+        }
+
+        div #da .rate {
+            display: block;
+            width: 6em;
+            text-align: right;
+            float: left;
+            font-size: medium;
+        }
+
+
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+    <h2>Room Types and Rates ( {{ current_dt }} )</h2>
+
+    <div id="hx">
+        <label id="hdesc">Description</label>
+        <label id="hrate">Rate</label>
+        <br>
+    </div>
+    <div id="da">
+        {% for e in rm_type_rate %}
+            <span class="desc">{{ e.desc }}</span>
+            <span class="rate">{{ e.rate|floatformat:0|intcomma }}</span><br>
+        {% endfor %}
+    </div>
+
+{% endblock %}

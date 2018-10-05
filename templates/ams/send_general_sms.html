@@ -1,0 +1,94 @@
+{% extends "ams_admin_base_html.html" %}
+{% load static %}
+{% load humanize %}
+
+
+{% block title %}General SMS{% endblock %}
+
+{% block script %}
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+{% endblock %}
+
+{% block style %}
+
+    <style>
+
+        div #da label {
+            display: block;
+            width: 9em;
+            text-align: right;
+            float: left;
+            font-size: medium;
+            font-weight: bold;
+            color: blue;
+            margin-right: .25em;
+
+        }
+
+        #id_phone_no {
+            display: block;
+            width: 8em;
+            text-align: center;
+            font-size: medium;
+            font-weight: bold;
+            color: black;
+            background-color: lightblue;
+            float: left;
+
+        }
+
+        #id_sms_msg {
+            display: block;
+            width: 25em;
+            font-size: medium;
+            font-weight: normal;
+            color: black;
+            background-color: lightblue;
+            float: left;
+
+        }
+
+        div .submit {
+            clear: both;
+        }
+
+        div.submit button {
+            width: 8em;
+            font-size: medium;
+            background-color: red;
+            color: white;
+            margin-top: .5em;
+            padding: .3em;
+        }
+
+
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+    <h2>Provide Phone# and Short Message to send SMS:</h2>
+
+    <div id="hx">
+    </div>
+
+    <div id="da">
+
+        <form action="." method="post">
+            {% csrf_token %}
+            <label for="phn">PHONE NUMBER:</label>
+            {{ phone_msg_form.phone_no }}<br><br>
+
+            <label for="msg">MESSAGE:</label>
+            {{ phone_msg_form.sms_msg }}<br>
+            <div class="submit">
+                <button type="submit">Send SMS</button>
+            </div>
+        </form>
+
+    </div>
+
+
+
+{% endblock %}

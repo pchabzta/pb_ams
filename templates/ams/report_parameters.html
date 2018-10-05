@@ -1,0 +1,130 @@
+{% extends "ams_admin_base_html.html" %}
+{% load static %}
+
+{% block title %}Report Parameters{% endblock %}
+
+{% block script %}
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+{% endblock %}
+
+{% block style %}
+
+    <style>
+        fieldset {
+            color: gray;
+            width: 20em;
+            font-weight: bold;
+            text-align: left;
+            margin-right: .15em;
+        }
+
+        label {
+            color: black;
+            width: 20em;
+            font-weight: bold;
+        {#text-align: left;#} margin-right: .15em;
+        }
+
+        #bld {
+
+            display: block;
+            width: 8em;
+            color: white;
+            background-color: green;
+        {#float: left;#} text-align: center;
+            font-size: medium;
+        }
+
+        #month {
+
+            display: block;
+            width: 8em;
+            color: white;
+            background-color: green;
+        {#float: left;#} text-align: center;
+            font-size: medium;
+        }
+
+        #year {
+
+            display: block;
+            width: 8em;
+            color: white;
+            background-color: green;
+        {#float: left;#} text-align: center;
+            font-size: medium;
+        }
+
+        div.submit button {
+            width: 8em;
+            background-color: red;
+            font-size: large;
+            color: white;
+            margin-top: .5em;
+            padding: .3em;
+        }
+
+
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+    <h1>Monthly Report</h1>
+
+    <form action="{% url 'monthly_report' %}" method="post">
+        {% csrf_token %}
+
+        {#        <div class="fld_set">#}
+
+        <fieldset>
+            <legend>SELECT REPORT PARAMETERS</legend>
+
+            <label for="bld">BUILDING:</label>
+            <select id="bld" name="bld">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+            </select><br>
+
+            <label for="month">MONTH:</label>
+            <select id="month" name="month">
+                <option value="1">JAN</option>
+                <option value="2">FEB</option>
+                <option value="3">MAR</option>
+                <option value="4">APR</option>
+                <option value="5">MAY</option>
+                <option value="6">JUN</option>
+                <option value="7">JUL</option>
+                <option value="8">AUG</option>
+                <option value="9">SEP</option>
+                <option value="10">OCT</option>
+                <option value="11">NOV</option>
+                <option value="12">DEC</option>
+            </select><br>
+
+            <label for="year">YEAR:</label>
+            <select id="year" name="year">
+                <option value="2018">2018</option>
+                <option value="2019">2019</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+            </select><br>
+
+        </fieldset>
+
+        {#        </div>#}
+
+
+        <div class="submit">
+            <button type="submit">Show Report</button>
+        </div>
+
+    </form>
+
+{% endblock %}
