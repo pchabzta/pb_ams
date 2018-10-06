@@ -680,3 +680,6 @@ class RM405B_BillForm(forms.ModelForm):
             'water_unit': forms.NumberInput(attrs={'class': 'wu', 'placeholder': 'water-unit', 'min': 0}),
             'misc_cost': forms.NumberInput(attrs={'class': 'mc', 'placeholder': 'misc_cost', 'min': 0})
         }
+
+class confirm_send_all_message(forms.ModelForm):
+    pass
