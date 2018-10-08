@@ -40,8 +40,8 @@
             color: red;
         }
 
-        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hadj, div #hbf,
-        .room_acc, .elec, .water, .com_ser, .oth_com_ser, .ovd, .adj, .bf {
+        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hlf, div #hma, div #hadj, div #hbf,
+        .room_acc, .elec, .water, .com_ser, .oth_com_ser, .ovd, .lf, .ma, .adj, .bf {
             display: block;
             width: 3.7em;
             float: left;
@@ -79,7 +79,7 @@
         div #hb_ref,
         div #hname,
         div #hroom,
-        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hadj, div #hbf,
+        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd,div #hlf, div #hma, div #hadj, div #hbf,
         div #hrc, div #hbt, div #hp_amt,
         div #hp_date {
             color: white;
@@ -89,14 +89,19 @@
         #atotal .tt_span,
         #atotal .room_cost, #atotal .room_acc, #atotal .elec, #atotal .water,
         #atotal .com_ser, #atotal .oth_com_ser, #atotal .adj, #atotal .ovd,
+        #atotal .lf, #atotal .ma,
         #atotal .total, #atotal .p_amt, #atotal .bf, #atotal .p_date,
+
         #btotal .tt_span,
         #btotal .room_cost, #btotal .room_acc, #btotal .elec, #btotal .water,
         #btotal .com_ser, #btotal .oth_com_ser, #btotal .adj, #btotal .ovd,
+        #btotal .lf, #btotal .ma,
         #btotal .total, #btotal .p_amt, #btotal .bf, #btotal .p_date,
+
         #abtotal .tt_span,
         #abtotal .room_cost, #abtotal .room_acc, #abtotal .elec, #abtotal .water,
         #abtotal .com_ser, #abtotal .oth_com_ser, #abtotal .adj, #abtotal .ovd,
+        #abtotal .lf, #abtotal .ma,
         #abtotal .total, #abtotal .p_amt, #abtotal .bf, #abtotal .p_date {
             color: black;
             background: #0ac33e;
@@ -120,6 +125,11 @@
         <label id="hcsc">CSC</label>
         <label id="hosc">OSC</label>
         <label id="hovd">OVD</label>
+
+        <label id="hlf">LF</label>
+        <label id="hma">MA</label>
+
+
         <label id="hadj">ADJ</label>
         <label id="hbt">TOTAL</label>
         <label id="hp_amt">P_AMT</label>
@@ -142,6 +152,12 @@
                 <span class="com_ser">{{ opbl.common_ser_cost |floatformat:0|intcomma }}</span>
                 <span class="oth_com_ser">{{ opbl.other_ser_cost|floatformat:0|intcomma }}</span>
                 <span class="ovd">{{ opbl.overdue_amount|floatformat:0|intcomma }}</span>
+
+                <span class="lf">{{ opbl.late_fee|floatformat:0|intcomma }}</span>
+                <span class="ma">{{ opbl.maint_cost|floatformat:0|intcomma }}</span>
+
+
+
                 <span class="adj">{{ opbl.adjust|floatformat:0|intcomma }}</span>
                 <span class="total">{{ opbl.bill_total|floatformat:0|intcomma }}</span>
                 <span class="p_amt">{{ opbl.payment_amount|floatformat:0|intcomma }}</span>
@@ -163,6 +179,12 @@
                 <span class="com_ser">{{ opbl.common_ser_cost|floatformat:0|intcomma }}</span>
                 <span class="oth_com_ser">{{ opbl.other_ser_cost |floatformat:0|intcomma }}</span>
                 <span class="ovd">{{ opbl.overdue_amount|floatformat:0|intcomma }}</span>
+
+                <span class="lf">{{ opbl.late_fee|floatformat:0|intcomma }}</span>
+                <span class="ma">{{ opbl.maint_cost|floatformat:0|intcomma }}</span>
+
+
+
                 <span class="adj">{{ opbl.adjust|floatformat:0|intcomma }}</span>
                 <span class="total">{{ opbl.bill_total|floatformat:0|intcomma }}</span>
                 <span class="p_amt">{{ opbl.payment_amount|floatformat:0|intcomma }}</span>
@@ -184,6 +206,11 @@
             <span class="com_ser">{{ tcsc_a|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_a|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_a|floatformat:0|intcomma }}</span>
+
+            <span class="lf">{{ tlf_a|floatformat:0|intcomma }}</span>
+            <span class="ma">{{ tma_a|floatformat:0|intcomma }}</span>
+
+
             <span class="adj">{{ tadj_a|floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_a|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_a|floatformat:0|intcomma }}</span>
@@ -204,6 +231,11 @@
             <span class="com_ser">{{ tcsc_b|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_b|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_b|floatformat:0|intcomma }}</span>
+
+             <span class="lf">{{ tlf_b|floatformat:0|intcomma }}</span>
+             <span class="ma">{{ tma_b|floatformat:0|intcomma }}</span>
+
+
             <span class="adj">{{ tadj_b|floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_b|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_b|floatformat:0|intcomma }}</span>
@@ -223,6 +255,11 @@
             <span class="com_ser">{{ tcsc_ab|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_ab|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_ab|floatformat:0|intcomma }}</span>
+
+            <span class="lf">{{ tlf_ab|floatformat:0|intcomma }}</span>
+            <span class="ma">{{ tma_ab|floatformat:0|intcomma }}</span>
+
+
             <span class="adj">{{ tadj_ab|floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_ab|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_ab|floatformat:0|intcomma }}</span>

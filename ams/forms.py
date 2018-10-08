@@ -1,6 +1,5 @@
 from django import forms
-from django import forms
-from .models import TenantProfile
+from .models import TenantProfile, MaintenanceCharge
 
 from django.contrib.auth import get_user_model
 
@@ -297,6 +296,7 @@ class PhoneNoMessage(forms.Form):
     # msg = forms.CharField(widget=forms.TextInput( attrs={'class': 'msg'}))
 
 
+# ----------------------------------------------------------------------------------------
 class TenantCreateForm(forms.ModelForm):
     password = forms.CharField(label='Password', widget=forms.PasswordInput)
     password2 = forms.CharField(label='Repeat password', widget=forms.PasswordInput)
@@ -316,7 +316,7 @@ class TenantProfileCreateForm(forms.ModelForm):
     class Meta:
         model = TenantProfile
         # fields = {'room_no','elec_unit','water_unit','misc_cost'}
-        exclude = ['tenant', 'deduct', 'cum_ovd', 'elec_unit', 'water_unit', 'misc_cost']
+        exclude = ['tenant', 'deduct', 'cum_ovd', 'elec_unit', 'water_unit', 'misc_cost', 'late_fee', 'maint_cost']
 
 
 class RM101A_BillForm(forms.ModelForm):
@@ -681,5 +681,16 @@ class RM405B_BillForm(forms.ModelForm):
             'misc_cost': forms.NumberInput(attrs={'class': 'mc', 'placeholder': 'misc_cost', 'min': 0})
         }
 
+
 class confirm_send_all_message(forms.ModelForm):
     pass
+
+
+class MaintenanceForm(forms.ModelForm):
+    class Meta:
+        model = MaintenanceCharge
+        fields = {'room_no', 'job_cost'}
+        widgets = {
+
+            'job_cost': forms.NumberInput(attrs={'class': 'job_cost', 'placeholder': 'Baht', 'min': 0})
+        }

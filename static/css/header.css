@@ -4,6 +4,7 @@ body {
     margin: 0;
     padding: 0;
     font-family: helvetica, sans-serif;
+    background: lightgray;
 }
 
 #header {
@@ -72,11 +73,16 @@ ul.messages li.warning,
 ul.messages li.error {
     list-style: disc;
     color: red;
+    background: #dad55e;
 }
 
 ul.messages li.success,
 ul.messages li.info {
-    list-style: disc;
+    /*list-style: disc;*/
+    list-style-type: disc;
     color: green;
+    /*background: #dad55e;*/
+    /*text-align: center;*/
+
 }
 

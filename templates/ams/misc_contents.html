@@ -16,10 +16,11 @@
             font-size: larger;
             font-weight: bold;
         }
-    a:hover{
-        color: red;
-        font-weight: bold;
-    }
+
+        a:hover {
+            color: red;
+            font-weight: bold;
+        }
 
 
     </style>
@@ -36,6 +37,10 @@
             <li><p><a href="{% url 'send_bil_sms_to_all_tenants' %}">Send Billing SMS to all tenants</a></p></li>
             <li><p><a href="{% url 'send_sms_to_individual_room' %}">Send Billing SMS to individual tenant</a></p></li>
             <li><p><a href="{% url 'send_general_sms' %}">Send general SMS</a></p></li>
+
+            <li><p><a href="{% url 'maintenance_charge' %}">Maintenance Charge</a></p></li>
+
+
         </ul>
 
 

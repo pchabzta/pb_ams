@@ -74,7 +74,7 @@
             line-height: 1.5em;
         }
 
-        #hrc, #hac, #hec, #hwc, #hcsc, #hosc, #hoth, #hovd {
+        #hrc, #hac, #hec, #hwc, #hcsc, #hosc, #hoth, #hmisc, #hovd {
             display: block;
             width: 3.5em;
             color: white;
@@ -102,7 +102,7 @@
             line-height: 1.5em;
         }
 
-        .rc, .ra, .ec, .wc, .csc, .osc, .oth, .ovd {
+        .rc, .ra, .ec, .wc, .csc, .osc, .oth, .misc, .ovd {
             display: block;
             width: 3.5em;
             text-align: right;
@@ -157,6 +157,9 @@
         <label id="hosc">OSC</label>
         <label id="hoth">OTH</label>
         <label id="hovd">OVD</label>
+
+        <label id="hmisc">MISC</label>
+
         <label id="hbt">TOTAL</label>
         <br>
     </div>
@@ -165,7 +168,7 @@
             {% csrf_token %}
             {% for tenant_bill in bills %}
                 {% if tenant_bill.room_no == '101A' %}
-                    {% display_tenant_bill_data '101A'%}
+                    {% display_tenant_bill_data '101A' %}
                     {{ rm101a_form.payment_amount }}
                     {{ rm101a_form.payment_date }}
                     <br>

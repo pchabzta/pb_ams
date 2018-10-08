@@ -51,7 +51,9 @@ def markdown_format(text):
 def display_tenant_bill_data(rmno):
     tenant_bill = get_object_or_404(Billing, room_no=rmno, status='open')
 
-    return {'tenant_bill': tenant_bill}
+    bill_misc = tenant_bill.late_fee + tenant_bill.maint_cost
+
+    return {'tenant_bill': tenant_bill, 'bill_misc': bill_misc}
 
 
 @register.inclusion_tag('ams/payment_individual_tag.html')
@@ -60,7 +62,9 @@ def display_individual_tenant_bill_data(rmno):
 
     room_cost_acc = tenant_bill.room_cost + tenant_bill.room_acc_cost + tenant_bill.adjust
 
-    return {'tenant_bill': tenant_bill, 'room_cost_acc': room_cost_acc}
+    bill_misc = tenant_bill.late_fee + tenant_bill.maint_cost
+
+    return {'tenant_bill': tenant_bill, 'room_cost_acc': room_cost_acc,'bill_misc':bill_misc}
 
 
 @register.simple_tag

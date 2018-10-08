@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Room_type, Room, Extra, Billing, TenantProfile
+from .models import Room_type, Room, Extra, Billing, TenantProfile, MaintenanceCharge
 from account.models import CustomUser
 from django.contrib.auth.admin import UserAdmin
 
@@ -29,3 +29,8 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(TenantProfile)
 class TenantProfileAdmin(admin.ModelAdmin):
     list_display = ['tenant', 'room_no', 'phone', 'pin']
+
+
+@admin.register(MaintenanceCharge)
+class MaintenanceChargeAdmin(admin.ModelAdmin):
+    list_display = ['room_no', 'desc', 'job_date', 'status']

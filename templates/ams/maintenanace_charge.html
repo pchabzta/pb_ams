@@ -1,0 +1,104 @@
+{% extends "ams_admin_base_html.html" %}
+
+{% load staticfiles %}
+{#{% load widget_tweaks %}#}
+
+{% block title %}New maintenance charge{% endblock %}
+
+{% block script %}
+
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+
+{% endblock %}
+
+
+{% block style %}
+    <style>
+
+        #content {
+            font: 90% Arial, Helvetica, sans-serif;
+            width: 95%;
+            padding: 2em;
+            margin: 2px;
+        }
+
+        #lb1, #lb2 {
+            display: block;
+            color: black;
+            width: 6em;
+
+            line-height: 1.8em;
+
+            font-weight: bold;
+            text-align: right;
+            margin-right: .25em;
+            background-color: #aaaaaa;
+            float: left;
+
+        }
+
+        div .ma_cost #id_room_no,
+        div .ma_cost #id_job_cost {
+            width: 6em;
+
+            font-size: 125%;
+
+            text-align: center;
+
+            background-color: lightskyblue;
+            margin-top: 0;
+
+            float: left;
+        }
+
+        div .ma_cost fieldset {
+            width: 18em;
+            height: 8em;
+        }
+
+        div .ma_cost legend {
+            color: blue;
+            font-weight: bold;
+            font-size: 125%;
+            margin-bottom: .5em;
+        }
+
+        div .submit button {
+            width: 6em;
+            font-size: large;
+            background-color: red;
+            color: white;
+            margin-top: .5em;
+            padding: .3em;
+            clear: both;
+        }
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+    <form action="." method="post">
+
+        {% csrf_token %}
+        <div class="ma_cost">
+            <fieldset>
+                <legend align="top">MAINTENANCE CHARGE</legend>
+                <label for="id_room_no" id="lb1">ROOM NO:</label>{{ maintenance_form.room_no }} <br><br>
+                <label for="id_job_cost" id="lb2">COST:</label>{{ maintenance_form.job_cost }}
+            </fieldset>
+        </div>
+
+        <div class="submit">
+            <button type="submit">Submit</button>
+        </div>
+
+
+    </form>
+
+
+
+{% endblock %}
+
+
+

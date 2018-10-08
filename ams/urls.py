@@ -35,6 +35,8 @@ urlpatterns = [
 
     path('tenant_bill/', views.tenant_bill, name='tenant_bill'),
     path('new_tenant/', views.new_tenant, name='new_tenant'),
-    path('pay_rent/str<bref>/', views.pay_rent, name='pay_rent')
+    path('pay_rent/str<bref>/', views.pay_rent, name='pay_rent'),
+
+    path('maintenance_charge/', views.maintenance_charge, name='maintenance_charge'),
 
 ]

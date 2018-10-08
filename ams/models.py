@@ -49,12 +49,15 @@ class Billing(models.Model):
     payment_amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     cf_amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
 
+    late_fee = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    maint_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+
     class Meta:
         ordering = ('-bill_date',)
 
     def __str__(self):
         return 'Bill for room number: {} Status: {}'.format(self.room_no, self.status)
-        # return self.bill_ref
+
 
     def get_absolute_url(self):
         return reverse('pay_rent', args=[str(self.bill_ref)])
@@ -75,14 +78,33 @@ class TenantProfile(models.Model):
     adjust = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     photo = models.ImageField(upload_to='users/%Y/%m/%d/', blank=True)
     extra = models.ManyToManyField(Extra)
-
     bill_date = models.DateField(auto_now=True, blank=True)
-    elec_unit = models.IntegerField(blank=True, null=True)  # use placeholder
-    water_unit = models.IntegerField(blank=True, null=True)
-    misc_cost = models.IntegerField(blank=True, null=True)
+
+    # USE PLACEHOLDER (NO DEFAULT VALUE) INITIAL VALUE TO BE PROVIDED WHEN SAVE TO DB
+    elec_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)
+    water_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)
+    misc_cost = models.DecimalField(max_digits=7, decimal_places=2, null=True)
+
+    late_fee = models.DecimalField(max_digits=7, decimal_places=2, default=0)  # no need to use placeholder
+    maint_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
 
     def __str__(self):
         return 'Profile for user {}'.format(self.tenant.first_name)
 
     def get_absolute_url(self):
         return reverse('fill_bill', args=[self.room_no])
+
+
+class MaintenanceCharge(models.Model):
+    STATUS_CHOICE = (('open', 'OPEN'), ('close', 'CLOSE'),)
+
+    room_no = models.ForeignKey(Room, on_delete=models.CASCADE)
+    desc = models.CharField(max_length=100)
+    # job_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    job_cost = models.DecimalField(max_digits=7, decimal_places=2)  # use placeholder (no default)
+    status = models.CharField(max_length=5, choices=STATUS_CHOICE, default='open')
+    job_date = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-job_date',)

@@ -33,7 +33,7 @@
             color: black;
             text-align: right;
             padding-right: .5em;
-            {#background: lightsteelblue;#}
+        {#background: lightsteelblue;#}
 
         }
 
@@ -86,10 +86,11 @@
             vertical-align: center;
             color: black;
         }
-    #status{
-        color: red;
-        font-weight: bold;
-    }
+
+        #status {
+            color: red;
+            font-weight: bold;
+        }
 
 
     </style>
@@ -154,6 +155,13 @@
             <td>ยอดค้างจ่าย</td>
 
             <td>{{ tn_bill.overdue_amount|floatformat:0|intcomma }}</td>
+        </tr>
+
+
+        <tr>
+            <td>ค่าปรับ และ อื่นๆ</td>
+
+            <td>{{ bill_misc|floatformat:0|intcomma }}</td>
         </tr>
 
 

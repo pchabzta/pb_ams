@@ -6,8 +6,9 @@ from .forms import PFormRM301B, PFormRM302B, PFormRM303B, PFormRM304B, PFormRM30
 from .forms import PFormRM401B, PFormRM402B, PFormRM403B, PFormRM404B, PFormRM405B
 from .forms import PaymentForm
 from .forms import Elec_cpu_change, Water_cpu_change, PhoneNoMessage
+from .forms import MaintenanceForm
 
-from ams.models import Extra, Room_type
+from ams.models import Extra, Room_type, MaintenanceCharge
 import datetime
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import is_aware, is_naive, make_aware, make_naive
@@ -27,6 +28,8 @@ from .forms import RM401B_BillForm, RM402B_BillForm, RM403B_BillForm, RM404B_Bil
 from ams.models import Billing
 import random
 
+import GV
+
 import os
 from openpyxl import workbook, load_workbook
 
@@ -39,32 +42,741 @@ import GV
 
 
 @login_required
-def tenant_comment(request):
-    # ---TEST ONLY-------------
-    # from pb_djams_project import settings
+def gateway(request):
+    if str(request.user) in ['Admin Admin', 'Preecha Bootwicha']:
 
-    # os.environ['SECRET_KEY'] = '75#^koi!0f__)fr2_3x#4qoatbv0wgp=+4(msc12!cav)gv@3&'
-    # print(os.environ['SECRET_KEY'])
-
-    # os.chdir("c:\\users\\preechab\\dj_exel_file")
-
-    # excel_f = 'Month_Billing.xlsx'
-
-    # cwd = os.getcwd()
-    # bd = settings.BASE_DIR
-    #
-    # os.chdir(bd)
-    #
-    # messages.info(request, 'BASE_DIR: {}'.format(bd))
-    # messages.info(request, 'CWD: {}'.format(cwd))
-    # ---------------------------
-
-    return render(request, 'ams/tenant_comment.html', {'section': 'comment'})
+        return HttpResponseRedirect(reverse_lazy('admin_page'))
+    else:
+        return HttpResponseRedirect(reverse_lazy('tenant_page'))
 
 
-# @login_required
-# def tenant_record(request):
-#     return render(request, 'ams/tenant_record.html', {'section': 'record'})
+@login_required
+def create_contract(request):
+    if request.method == 'POST':
+
+        tenant_form = TenantCreateForm(data=request.POST)
+        # tenant_profile_form = TenantProfileCreateForm(data=request.POST, files=request.FILES)
+        tenant_profile_form = TenantProfileCreateForm(data=request.POST, files=request.FILES)
+
+        if tenant_form.is_valid() and tenant_profile_form.is_valid():
+
+            # Create a new tenant object but avoid saving it yet
+            new_tenant = tenant_form.save(commit=False)
+
+            # Set the chosen password
+            # new_tenant.set_password(tenant_form.cleaned_data['password'])
+            new_tenant.set_password(tenant_form.clean_password2())
+
+            # Save the new_tenant object
+            new_tenant.save()
+
+            # Create a new tenantprofile object but avoid saving it yet
+            tenant_profile = tenant_profile_form.save(commit=False)  # save_m2m() added to tenant_profile_form
+
+            # Set the chosen tenant field
+            tenant_profile.tenant = new_tenant
+
+            # ------------------------------------------
+            # provide initial value to certain fields before saving to DB
+            tenant_profile.elec_unit = 0
+            tenant_profile.water_unit = 0
+            tenant_profile.misc_cost = 0
+            # -----------------------------------------
+
+            # Save the tenantprofile object
+            tenant_profile.save()
+
+            # Save the ManyToMany
+            tenant_profile_form.save_m2m()
+
+            messages.success(request, 'Profile updated successfully')
+
+            return HttpResponseRedirect(reverse_lazy('admin_page'))
+        else:
+            messages.error(request, 'Error updating your tenant_profile')
+
+    else:
+        tenant_form = TenantCreateForm()
+        # tenant_profile_form = TenantProfileCreateForm()
+        tenant_profile_form = TenantProfileCreateForm()
+
+    return render(request, 'ams/create_contract.html',
+                  {'section': 'new_contract', 'tenant_form': tenant_form, 'tenant_profile_form': tenant_profile_form})
+
+
+# @login_required # ?????
+def create_bill(room_no):
+    pf = get_object_or_404(TenantProfile, room_no__room_no=room_no)
+
+    tname = pf.tenant.first_name + ' ' + pf.tenant.last_name
+    rno = pf.room_no.room_no
+    adj = pf.adjust
+
+    exd = {}
+    exd.setdefault('Electricity CPU', 0)
+    exd.setdefault('Water CPU', 0)
+    exd.setdefault('Garbage', 0)
+    exd.setdefault('Parking', 0)
+    exd.setdefault('Wifi', 0)
+    exd.setdefault('Cable TV', 0)
+    exd.setdefault('Bed', 0)
+    exd.setdefault('Bed accessories', 0)
+    exd.setdefault('Dressing Table', 0)
+    exd.setdefault('Clothing Cupboard', 0)
+    exd.setdefault('TV Table', 0)
+    exd.setdefault('Fridge', 0)
+    exd.setdefault('Air-Conditioner', 0)
+
+    for e in pf.extra.all():
+        exd.update({e.desc: e.cpu})
+
+    room_cost = pf.room_no.room_type.rate
+    room_acc_cost = exd['Bed'] + exd['Bed accessories'] + exd['Dressing Table'] \
+                    + exd['Clothing Cupboard'] + exd['TV Table'] + exd['Fridge'] \
+                    + exd['Air-Conditioner']
+
+    elec_cost = exd['Electricity CPU'] * pf.elec_unit
+    water_cost = exd['Water CPU'] * pf.water_unit
+
+    com_ser_cost = pf.elec_unit * GV.COMMOM_SERVICE_CPU
+
+    oth_ser_cost = exd['Garbage'] + exd['Parking'] + exd['Wifi'] + exd['Cable TV']
+    ovd_amt = pf.cum_ovd
+
+    # -----------------------
+    late_f = pf.late_fee
+    maint_c = pf.maint_cost
+
+    # RESET pf.late_fee & pf.maint_cost TO O TO BE READY FOR NEXT CYCLE
+    pf.late_fee = 0
+    pf.maint_cost = 0
+    # -----------------------
+
+    total = room_cost + room_acc_cost + elec_cost + water_cost + com_ser_cost + oth_ser_cost + ovd_amt + adj + late_f + maint_c
+
+    new_bill = Billing(bill_ref=get_ref_string(),
+                       tenant_name=tname,
+                       room_no=rno,
+                       room_cost=room_cost,
+                       room_acc_cost=room_acc_cost,
+                       electricity_cost=elec_cost,
+                       water_cost=water_cost,
+                       common_ser_cost=com_ser_cost,
+                       other_ser_cost=oth_ser_cost,
+                       overdue_amount=ovd_amt,
+
+                       # -----------------------
+                       late_fee=late_f,
+                       maint_cost=maint_c,
+                       # -----------------------
+
+                       adjust=adj,
+                       bill_total=total,
+
+                       )
+
+    # SAVE BILL & TENANTPROFILE TO DB
+    new_bill.save()
+
+    pf.save()
+
+
+@login_required
+def billing(request):
+    tenant_pf = TenantProfile.objects.order_by("room_no")
+
+    rm101a_form = None
+    rm102a_form = None
+    rm103a_form = None
+    rm104a_form = None
+    rm105a_form = None
+    rm106a_form = None
+
+    rm201a_form = None
+    rm202a_form = None
+    rm203a_form = None
+    rm204a_form = None
+    rm205a_form = None
+    rm206a_form = None
+
+    rm301a_form = None
+    rm302a_form = None
+    rm303a_form = None
+    rm304a_form = None
+    rm305a_form = None
+    rm306a_form = None
+
+    rm201b_form = None
+    rm202b_form = None
+    rm203b_form = None
+    rm204b_form = None
+    rm205b_form = None
+
+    rm301b_form = None
+    rm302b_form = None
+    rm303b_form = None
+    rm304b_form = None
+    rm305b_form = None
+
+    rm401b_form = None
+    rm402b_form = None
+    rm403b_form = None
+    rm404b_form = None
+    rm405b_form = None
+
+    no_of_bill = 0
+    for tpf in tenant_pf:
+        rmn = tpf.room_no.room_no
+
+        if request.method == 'POST':
+
+            if rmn == '101A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm101a_form = RM101A_BillForm(data=request.POST, instance=pf, prefix='rm101a')
+                if rm101a_form.is_valid():
+                    rm101a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 101A Billing')
+            if rmn == '102A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm102a_form = RM102A_BillForm(data=request.POST, instance=pf, prefix='rm102a')
+                if rm102a_form.is_valid():
+                    rm102a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 102A Billing')
+            if rmn == '103A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm103a_form = RM103A_BillForm(data=request.POST, instance=pf, prefix='rm103a')
+                if rm103a_form.is_valid():
+                    rm103a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 103A Billing')
+
+            if rmn == '104A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm104a_form = RM104A_BillForm(data=request.POST, instance=pf, prefix='rm104a')
+                if rm104a_form.is_valid():
+                    rm104a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 104A Billing')
+
+            if rmn == '105A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm105a_form = RM105A_BillForm(data=request.POST, instance=pf, prefix='rm105a')
+                if rm105a_form.is_valid():
+                    rm105a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 105A Billing')
+
+            if rmn == '106A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm106a_form = RM106A_BillForm(data=request.POST, instance=pf, prefix='rm106a')
+                if rm106a_form.is_valid():
+                    rm106a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 106A Billing')
+
+            if rmn == '201A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm201a_form = RM201A_BillForm(data=request.POST, instance=pf, prefix='rm201a')
+                if rm201a_form.is_valid():
+                    rm201a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 201A Billing')
+
+            if rmn == '202A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm202a_form = RM202A_BillForm(data=request.POST, instance=pf, prefix='rm202a')
+                if rm202a_form.is_valid():
+                    rm202a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 202A Billing')
+
+            if rmn == '203A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm203a_form = RM203A_BillForm(data=request.POST, instance=pf, prefix='rm203a')
+                if rm203a_form.is_valid():
+                    rm203a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 203A Billing')
+
+            if rmn == '204A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm204a_form = RM204A_BillForm(data=request.POST, instance=pf, prefix='rm204a')
+                if rm204a_form.is_valid():
+                    rm204a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 204A Billing')
+
+            if rmn == '205A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm205a_form = RM205A_BillForm(data=request.POST, instance=pf, prefix='rm205a')
+                if rm205a_form.is_valid():
+                    rm205a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 205A Billing')
+
+            if rmn == '206A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm206a_form = RM206A_BillForm(data=request.POST, instance=pf, prefix='rm206a')
+                if rm206a_form.is_valid():
+                    rm206a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 206A Billing')
+
+            if rmn == '301A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm301a_form = RM301A_BillForm(data=request.POST, instance=pf, prefix='rm301a')
+                if rm301a_form.is_valid():
+                    rm301a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 301A Billing')
+
+            if rmn == '302A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm302a_form = RM302A_BillForm(data=request.POST, instance=pf, prefix='rm302a')
+                if rm302a_form.is_valid():
+                    rm302a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 302A Billing')
+
+            if rmn == '303A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm303a_form = RM303A_BillForm(data=request.POST, instance=pf, prefix='rm303a')
+                if rm303a_form.is_valid():
+                    rm303a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 303A Billing')
+
+            if rmn == '304A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm304a_form = RM304A_BillForm(data=request.POST, instance=pf, prefix='rm304a')
+                if rm304a_form.is_valid():
+                    rm304a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 304A Billing')
+
+            if rmn == '305A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm305a_form = RM305A_BillForm(data=request.POST, instance=pf, prefix='rm305a')
+                if rm305a_form.is_valid():
+                    rm305a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 305A Billing')
+
+            if rmn == '306A':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm306a_form = RM306A_BillForm(data=request.POST, instance=pf, prefix='rm306a')
+                if rm306a_form.is_valid():
+                    rm306a_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 306A Billing')
+
+            if rmn == '201B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm201b_form = RM201B_BillForm(data=request.POST, instance=pf, prefix='rm201b')
+                if rm201b_form.is_valid():
+                    rm201b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 201B Billing')
+
+            if rmn == '202B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm202b_form = RM202B_BillForm(data=request.POST, instance=pf, prefix='rm202b')
+                if rm202b_form.is_valid():
+                    rm202b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 202B Billing')
+
+            if rmn == '203B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm203b_form = RM203B_BillForm(data=request.POST, instance=pf, prefix='rm203b')
+                if rm203b_form.is_valid():
+                    rm203b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 203B Billing')
+
+            if rmn == '204B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm204b_form = RM204B_BillForm(data=request.POST, instance=pf, prefix='rm204b')
+                if rm204b_form.is_valid():
+                    rm204b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 204B Billing')
+
+            if rmn == '205B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm205b_form = RM205B_BillForm(data=request.POST, instance=pf, prefix='rm205b')
+                if rm205b_form.is_valid():
+                    rm205b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 205B Billing')
+
+            if rmn == '301B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm301b_form = RM301B_BillForm(data=request.POST, instance=pf, prefix='rm301b')
+                if rm301b_form.is_valid():
+                    rm301b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 301B Billing')
+
+            if rmn == '302B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm302b_form = RM302B_BillForm(data=request.POST, instance=pf, prefix='rm302b')
+                if rm302b_form.is_valid():
+                    rm302b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 302B Billing')
+
+            if rmn == '303B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm303b_form = RM303B_BillForm(data=request.POST, instance=pf, prefix='rm303b')
+                if rm303b_form.is_valid():
+                    rm303b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 303B Billing')
+
+            if rmn == '304B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm304b_form = RM304B_BillForm(data=request.POST, instance=pf, prefix='rm304b')
+                if rm304b_form.is_valid():
+                    rm304b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 304B Billing')
+
+            if rmn == '305B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm305b_form = RM305B_BillForm(data=request.POST, instance=pf, prefix='rm305b')
+                if rm305b_form.is_valid():
+                    rm305b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 305B Billing')
+
+            if rmn == '401B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm401b_form = RM401B_BillForm(data=request.POST, instance=pf, prefix='rm401b')
+                if rm401b_form.is_valid():
+                    rm401b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 401B Billing')
+
+            if rmn == '402B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm402b_form = RM402B_BillForm(data=request.POST, instance=pf, prefix='rm402b')
+                if rm402b_form.is_valid():
+                    rm402b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 402B Billing')
+
+            if rmn == '403B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm403b_form = RM403B_BillForm(data=request.POST, instance=pf, prefix='rm403b')
+                if rm403b_form.is_valid():
+                    rm403b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 403B Billing')
+
+            if rmn == '404B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm404b_form = RM404B_BillForm(data=request.POST, instance=pf, prefix='rm404b')
+                if rm404b_form.is_valid():
+                    rm404b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 404B Billing')
+
+            if rmn == '405B':
+                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+                rm405b_form = RM405B_BillForm(data=request.POST, instance=pf, prefix='rm405b')
+                if rm405b_form.is_valid():
+                    rm405b_form.save(commit=True)
+                    # -------------------
+                    create_bill(rmn)
+                    no_of_bill += 1
+                    # ------------------
+                else:
+                    messages.error(request, 'Error updating Room 405B Billing')
+
+        else:
+            if rmn == '101A':
+                rm101a_form = RM101A_BillForm(prefix='rm101a')
+
+            if rmn == '102A':
+                rm102a_form = RM102A_BillForm(prefix='rm102a')
+
+            if rmn == '103A':
+                rm103a_form = RM103A_BillForm(prefix='rm103a')
+
+            if rmn == '104A':
+                rm104a_form = RM104A_BillForm(prefix='rm104a')
+
+            if rmn == '105A':
+                rm105a_form = RM105A_BillForm(prefix='rm105a')
+
+            if rmn == '106A':
+                rm106a_form = RM106A_BillForm(prefix='rm106a')
+
+            if rmn == '201A':
+                rm201a_form = RM201A_BillForm(prefix='rm201a')
+
+            if rmn == '202A':
+                rm202a_form = RM202A_BillForm(prefix='rm202a')
+
+            if rmn == '203A':
+                rm203a_form = RM203A_BillForm(prefix='rm203a')
+
+            if rmn == '204A':
+                rm204a_form = RM204A_BillForm(prefix='rm204a')
+
+            if rmn == '205A':
+                rm205a_form = RM205A_BillForm(prefix='rm205a')
+
+            if rmn == '206A':
+                rm206a_form = RM206A_BillForm(prefix='rm206a')
+
+            if rmn == '301A':
+                rm301a_form = RM301A_BillForm(prefix='rm301a')
+
+            if rmn == '302A':
+                rm302a_form = RM302A_BillForm(prefix='rm302a')
+
+            if rmn == '303A':
+                rm303a_form = RM303A_BillForm(prefix='rm303a')
+
+            if rmn == '304A':
+                rm304a_form = RM304A_BillForm(prefix='rm304a')
+
+            if rmn == '305A':
+                rm305a_form = RM305A_BillForm(prefix='rm305a')
+
+            if rmn == '306A':
+                rm306a_form = RM306A_BillForm(prefix='rm306a')
+
+            if rmn == '201B':
+                rm201b_form = RM201B_BillForm(prefix='rm201b')
+
+            if rmn == '202B':
+                rm202b_form = RM202B_BillForm(prefix='rm202b')
+
+            if rmn == '203B':
+                rm203b_form = RM203B_BillForm(prefix='rm203b')
+
+            if rmn == '204B':
+                rm204b_form = RM204B_BillForm(prefix='rm204b')
+
+            if rmn == '205B':
+                rm205b_form = RM205B_BillForm(prefix='rm205b')
+
+            if rmn == '301B':
+                rm301b_form = RM301B_BillForm(prefix='rm301b')
+
+            if rmn == '302B':
+                rm302b_form = RM302B_BillForm(prefix='rm302b')
+
+            if rmn == '303B':
+                rm303b_form = RM303B_BillForm(prefix='rm303b')
+
+            if rmn == '304B':
+                rm304b_form = RM304B_BillForm(prefix='rm304b')
+
+            if rmn == '305B':
+                rm305b_form = RM305B_BillForm(prefix='rm305b')
+
+            if rmn == '401B':
+                rm401b_form = RM401B_BillForm(prefix='rm401b')
+
+            if rmn == '402B':
+                rm402b_form = RM402B_BillForm(prefix='rm402b')
+
+            if rmn == '403B':
+                rm403b_form = RM403B_BillForm(prefix='rm403b')
+
+            if rmn == '404B':
+                rm404b_form = RM404B_BillForm(prefix='rm404b')
+
+            if rmn == '405B':
+                rm405b_form = RM405B_BillForm(prefix='rm405b')
+
+    if request.method == 'POST':
+
+        # WRITE TO BILL SUMMARY AND BILL SLIP (Localhost only, at this time !!!!)
+        create_exel_sheet(request)
+
+        # -----------------
+        # FOR PYTHONANYWHERE HOST (uncomment the following line !!)
+        # messages.success(request, 'Total {} bills created.'.format(no_of_bill))
+        # -----------------
+        return HttpResponseRedirect(reverse_lazy('admin_page'))
+    else:
+        return render(request, 'ams/billing.html', {'tenant_pf': tenant_pf, 'section': 'billing',
+                                                    'rm101a_form': rm101a_form,
+                                                    'rm102a_form': rm102a_form,
+                                                    'rm103a_form': rm103a_form,
+                                                    'rm104a_form': rm104a_form,
+                                                    'rm105a_form': rm105a_form,
+                                                    'rm106a_form': rm106a_form,
+
+                                                    'rm201a_form': rm201a_form,
+                                                    'rm202a_form': rm202a_form,
+                                                    'rm203a_form': rm203a_form,
+                                                    'rm204a_form': rm204a_form,
+                                                    'rm205a_form': rm205a_form,
+                                                    'rm206a_form': rm206a_form,
+
+                                                    'rm301a_form': rm301a_form,
+                                                    'rm302a_form': rm302a_form,
+                                                    'rm303a_form': rm303a_form,
+                                                    'rm304a_form': rm304a_form,
+                                                    'rm305a_form': rm305a_form,
+                                                    'rm306a_form': rm306a_form,
+
+                                                    'rm201b_form': rm201b_form,
+                                                    'rm202b_form': rm202b_form,
+                                                    'rm203b_form': rm203b_form,
+                                                    'rm204b_form': rm204b_form,
+                                                    'rm205b_form': rm205b_form,
+
+                                                    'rm301b_form': rm301b_form,
+                                                    'rm302b_form': rm302b_form,
+                                                    'rm303b_form': rm303b_form,
+                                                    'rm304b_form': rm304b_form,
+                                                    'rm305b_form': rm305b_form,
+
+                                                    'rm401b_form': rm401b_form,
+                                                    'rm402b_form': rm402b_form,
+                                                    'rm403b_form': rm403b_form,
+                                                    'rm404b_form': rm404b_form,
+                                                    'rm405b_form': rm405b_form,
+
+                                                    })
 
 
 # @login_required (cannot be used here !!!)
@@ -79,6 +791,22 @@ def update_pf_and_bill(roomno, cd):
     bill.payment_amount = cd['payment_amount']
     bill.status = 'close'
 
+    # CALCULATE LATE-FEE COST TO UPDATE PF.LATE_FEE
+    bill_month = bill.bill_date.month
+
+    pay_month = bill.payment_date.month
+    pay_day = bill.payment_date.day
+
+    late_fee = 0
+
+    if pay_month > bill_month:
+        if pay_day > GV.LATE_DAY_MAX:
+            late_fee = GV.LATE_FEE_PER_DAY * (pay_day - GV.LATE_DAY_MAX)
+
+    # Update pf for next billing
+    pf.late_fee = late_fee
+
+    # Update DB
     bill.save()
     pf.save()
 
@@ -105,7 +833,6 @@ def pay_rent(request, bref):
         pay_form = PaymentForm()
 
     if request.method == 'POST':
-        # messages.info(request, 'Payments have been completed.')
         messages.success(request, 'Room {}: Payment has been completed !!!'.format(rmn))
         return HttpResponseRedirect(reverse_lazy('payment_individual'))
     else:
@@ -786,6 +1513,9 @@ def monthly_report(request):
     tosc_a = 0
     tovd_a = 0
 
+    tlf_a = 0
+    tma_a = 0
+
     tadj_a = 0
 
     tbt_a = 0
@@ -800,6 +1530,9 @@ def monthly_report(request):
     tosc_b = 0
     tovd_b = 0
 
+    tlf_b = 0
+    tma_b = 0
+
     tadj_b = 0
 
     tbt_b = 0
@@ -813,6 +1546,9 @@ def monthly_report(request):
     tcsc_ab = 0
     tosc_ab = 0
     tovd_ab = 0
+
+    tlf_ab = 0
+    tma_ab = 0
 
     tadj_ab = 0
 
@@ -830,6 +1566,9 @@ def monthly_report(request):
             tosc_a += bill.other_ser_cost
             tovd_a += bill.overdue_amount
 
+            tlf_a += bill.late_fee
+            tma_a += bill.maint_cost
+
             tadj_a += bill.adjust
 
             tbt_a += bill.bill_total
@@ -842,6 +1581,9 @@ def monthly_report(request):
         cum_list_a.append(tcsc_a)
         cum_list_a.append(tosc_a)
         cum_list_a.append(tovd_a)
+
+        cum_list_a.append(tlf_a)
+        cum_list_a.append(tma_a)
 
         cum_list_a.append(tadj_a)
 
@@ -859,6 +1601,9 @@ def monthly_report(request):
             tosc_b += bill.other_ser_cost
             tovd_b += bill.overdue_amount
 
+            tlf_b += bill.overdue_amount
+            tma_b += bill.overdue_amount
+
             tadj_b += bill.adjust
 
             tbt_b += bill.bill_total
@@ -871,6 +1616,9 @@ def monthly_report(request):
         cum_list_b.append(tcsc_b)
         cum_list_b.append(tosc_b)
         cum_list_b.append(tovd_b)
+
+        cum_list_b.append(tlf_b)
+        cum_list_b.append(tma_b)
 
         cum_list_b.append(tadj_b)
 
@@ -887,6 +1635,9 @@ def monthly_report(request):
         tcsc_ab = tcsc_a + tcsc_b
         tosc_ab = tosc_a + tosc_b
         tovd_ab = tovd_a + tovd_b
+
+        tlf_ab = tlf_a + tlf_b
+        tma_ab = tma_a + tma_b
 
         tadj_ab = tadj_a + tadj_b
 
@@ -911,6 +1662,9 @@ def monthly_report(request):
                                                        'tosc_a': tosc_a,
                                                        'tovd_a': tovd_a,
 
+                                                       'tlf_a': tlf_a,
+                                                       'tma_a': tma_a,
+
                                                        'tadj_a': tadj_a,
 
                                                        'tbt_a': tbt_a,
@@ -925,6 +1679,9 @@ def monthly_report(request):
                                                        'tosc_b': tosc_b,
                                                        'tovd_b': tovd_b,
 
+                                                       'tlf_b': tlf_b,
+                                                       'tma': tma_b,
+
                                                        'tadj_b': tadj_b,
 
                                                        'tbt_b': tbt_b,
@@ -938,6 +1695,9 @@ def monthly_report(request):
                                                        'tcsc_ab': tcsc_ab,
                                                        'tosc_ab': tosc_ab,
                                                        'tovd_ab': tovd_ab,
+
+                                                       'tlf_ab': tlf_ab,
+                                                       'tma_ab': tma_ab,
 
                                                        'tadj_ab': tadj_ab,
 
@@ -1299,10 +2059,14 @@ def tenant_bill_subroutine(tn_bill):
     next_th_m = get_thai_month_name(str(next_dt_mth))
 
     room_with_acc_cost = tn_bill.room_cost + tn_bill.room_acc_cost + tn_bill.adjust
+
+    bill_misc = tn_bill.late_fee + tn_bill.maint_cost
+
     if tn_bill.status == 'open':
         paid_str = 'รอชำระ'
     else:
-        paid_str = 'ชำระแล้ว ณ วันที่ {} {} {}'.format(pay_date.day, get_thai_month_name(str(pay_date)), get_thai_year(str(pay_date)))
+        paid_str = 'ชำระแล้ว ณ วันที่ {} {} {}'.format(pay_date.day, get_thai_month_name(str(pay_date)),
+                                                       get_thai_year(str(pay_date)))
 
     # TEMPORARY UNTIL OVD OF RM204A HAS BEEN COVERED
     rn = tn_bill.room_no
@@ -1311,7 +2075,7 @@ def tenant_bill_subroutine(tn_bill):
     else:
         bill_total = tn_bill.bill_total
 
-    return room_with_acc_cost, bill_total, paid_str, cur_th_mth, next_th_m, cur_th_yr
+    return room_with_acc_cost, bill_misc, bill_total, paid_str, cur_th_mth, next_th_m, cur_th_yr
 
 
 @login_required
@@ -1327,16 +2091,18 @@ def tenant_bill(request):
             bill_month = str(datetime.datetime.now().month)
             tnb_qs = Billing.objects.filter(tenant_name=tenant, status='close', bill_date__month=bill_month)
             if tnb_qs:
-                tn_bill = get_object_or_404(Billing, tenant_name=tenant,status='close', bill_date__month=bill_month)
+                tn_bill = get_object_or_404(Billing, tenant_name=tenant, status='close', bill_date__month=bill_month)
             else:
                 bill_month = str(datetime.datetime.now().month - 1)
                 tn_bill = get_object_or_404(Billing, tenant_name=tenant, status='close', bill_date__month=bill_month)
 
-        room_with_acc_cost, bill_total, paid_str, cur_th_mth, next_th_m, cur_th_yr = tenant_bill_subroutine(tn_bill)
+        room_with_acc_cost, bill_misc, bill_total, paid_str, cur_th_mth, next_th_m, cur_th_yr = tenant_bill_subroutine(
+            tn_bill)
 
         return render(request, 'ams/tenant_bill.html',
                       {'section': 'bill', 'tn_bill': tn_bill, 'room_with_acc_cost': room_with_acc_cost,
-                       'bill_total': bill_total, 'cur_th_mth': cur_th_mth, 'next_th_m': next_th_m,
+                       'bill_misc': bill_misc, 'bill_total': bill_total, 'cur_th_mth': cur_th_mth,
+                       'next_th_m': next_th_m,
                        'cur_th_yr': cur_th_yr, 'paid_str': paid_str})
     else:
 
@@ -1352,62 +2118,6 @@ def new_tenant(request):
     tenant_name = str(request.user)
 
     return render(request, 'ams/new_tenant.html', {'section': 'bill', 'tenant_name': tenant_name})
-
-
-@login_required
-def gateway(request):
-    if str(request.user) in ['Admin Admin', 'Preecha Bootwicha']:
-
-        return HttpResponseRedirect(reverse_lazy('admin_page'))
-    else:
-        return HttpResponseRedirect(reverse_lazy('tenant_page'))
-
-
-@login_required
-def create_contract(request):
-    if request.method == 'POST':
-
-        tenant_form = TenantCreateForm(data=request.POST)
-        # tenant_profile_form = TenantProfileCreateForm(data=request.POST, files=request.FILES)
-        tenant_profile_form = TenantProfileCreateForm(data=request.POST, files=request.FILES)
-
-        if tenant_form.is_valid() and tenant_profile_form.is_valid():
-
-            # Create a new tenant object but avoid saving it yet
-            new_tenant = tenant_form.save(commit=False)
-
-            # Set the chosen password
-            # new_tenant.set_password(tenant_form.cleaned_data['password'])
-            new_tenant.set_password(tenant_form.clean_password2())
-
-            # Save the new_tenant object
-            new_tenant.save()
-
-            # Create a new tenantprofile object but avoid saving it yet
-            tenant_profile = tenant_profile_form.save(commit=False)  # save_m2m() added to tenant_profile_form
-
-            # Set the chosen tenant field
-            tenant_profile.tenant = new_tenant
-
-            # Save the tenantprofile object
-            tenant_profile.save()
-
-            # Save the ManyToMany
-            tenant_profile_form.save_m2m()
-
-            messages.success(request, 'Profile updated successfully')
-
-            return HttpResponseRedirect(reverse_lazy('admin_page'))
-        else:
-            messages.error(request, 'Error updating your tenant_profile')
-
-    else:
-        tenant_form = TenantCreateForm()
-        # tenant_profile_form = TenantProfileCreateForm()
-        tenant_profile_form = TenantProfileCreateForm()
-
-    return render(request, 'ams/create_contract.html',
-                  {'section': 'new_contract', 'tenant_form': tenant_form, 'tenant_profile_form': tenant_profile_form})
 
 
 @login_required
@@ -1465,63 +2175,6 @@ def give_error_message(error_msg):
 
 def give_info_message(error_msg):
     print(error_msg)
-
-
-# @login_required # ?????
-def create_bill(room_no):
-    pf = get_object_or_404(TenantProfile, room_no__room_no=room_no)
-
-    tname = pf.tenant.first_name + ' ' + pf.tenant.last_name
-    rno = pf.room_no.room_no
-    adj = pf.adjust
-
-    exd = {}
-    exd.setdefault('Electricity CPU', 0)
-    exd.setdefault('Water CPU', 0)
-    exd.setdefault('Garbage', 0)
-    exd.setdefault('Parking', 0)
-    exd.setdefault('Wifi', 0)
-    exd.setdefault('Cable TV', 0)
-    exd.setdefault('Bed', 0)
-    exd.setdefault('Bed accessories', 0)
-    exd.setdefault('Dressing Table', 0)
-    exd.setdefault('Clothing Cupboard', 0)
-    exd.setdefault('TV Table', 0)
-    exd.setdefault('Fridge', 0)
-    exd.setdefault('Air-Conditioner', 0)
-
-    for e in pf.extra.all():
-        exd.update({e.desc: e.cpu})
-
-    room_cost = pf.room_no.room_type.rate
-    room_acc_cost = exd['Bed'] + exd['Bed accessories'] + exd['Dressing Table'] \
-                    + exd['Clothing Cupboard'] + exd['TV Table'] + exd['Fridge'] \
-                    + exd['Air-Conditioner']
-
-    elec_cost = exd['Electricity CPU'] * pf.elec_unit
-    water_cost = exd['Water CPU'] * pf.water_unit
-    # com_ser_cost = pf.elec_unit * 5  # NEW CONTRACT
-    com_ser_cost = pf.elec_unit * 0
-    oth_ser_cost = exd['Garbage'] + exd['Parking'] + exd['Wifi'] + exd['Cable TV']
-    ovd_amt = pf.cum_ovd
-
-    total = room_cost + room_acc_cost + elec_cost + water_cost + com_ser_cost + oth_ser_cost + ovd_amt + adj
-
-    new_bill = Billing(bill_ref=get_ref_string(),
-                       tenant_name=tname,
-                       room_no=rno,
-                       room_cost=room_cost,
-                       room_acc_cost=room_acc_cost,
-                       electricity_cost=elec_cost,
-                       water_cost=water_cost,
-                       common_ser_cost=com_ser_cost,
-                       other_ser_cost=oth_ser_cost,
-                       overdue_amount=ovd_amt,
-                       adjust=adj, bill_total=total,
-
-                       )
-
-    new_bill.save()
 
 
 # @login_required
@@ -1910,598 +2563,65 @@ def create_exel_sheet(request):
 
 
 @login_required
-def billing(request):
-    tenant_pf = TenantProfile.objects.order_by("room_no")
+def tenant_comment(request):
+    # ---TEST ONLY-------------
+    # from pb_djams_project import settings
 
-    rm101a_form = None
-    rm102a_form = None
-    rm103a_form = None
-    rm104a_form = None
-    rm105a_form = None
-    rm106a_form = None
+    # os.environ['SECRET_KEY'] = '75#^koi!0f__)fr2_3x#4qoatbv0wgp=+4(msc12!cav)gv@3&'
+    # print(os.environ['SECRET_KEY'])
 
-    rm201a_form = None
-    rm202a_form = None
-    rm203a_form = None
-    rm204a_form = None
-    rm205a_form = None
-    rm206a_form = None
+    # os.chdir("c:\\users\\preechab\\dj_exel_file")
 
-    rm301a_form = None
-    rm302a_form = None
-    rm303a_form = None
-    rm304a_form = None
-    rm305a_form = None
-    rm306a_form = None
+    # excel_f = 'Month_Billing.xlsx'
 
-    rm201b_form = None
-    rm202b_form = None
-    rm203b_form = None
-    rm204b_form = None
-    rm205b_form = None
+    # cwd = os.getcwd()
+    # bd = settings.BASE_DIR
+    #
+    # os.chdir(bd)
+    #
+    # messages.info(request, 'BASE_DIR: {}'.format(bd))
+    # messages.info(request, 'CWD: {}'.format(cwd))
+    # ---------------------------
 
-    rm301b_form = None
-    rm302b_form = None
-    rm303b_form = None
-    rm304b_form = None
-    rm305b_form = None
+    return render(request, 'ams/tenant_comment.html', {'section': 'comment'})
 
-    rm401b_form = None
-    rm402b_form = None
-    rm403b_form = None
-    rm404b_form = None
-    rm405b_form = None
 
-    no_of_bill = 0
-    for tpf in tenant_pf:
-        rmn = tpf.room_no.room_no
+# @login_required
+# def tenant_record(request):
+#     return render(request, 'ams/tenant_record.html', {'section': 'record'})
 
-        if request.method == 'POST':
 
-            if rmn == '101A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm101a_form = RM101A_BillForm(data=request.POST, instance=pf, prefix='rm101a')
-                if rm101a_form.is_valid():
-                    rm101a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 101A Billing')
-            if rmn == '102A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm102a_form = RM102A_BillForm(data=request.POST, instance=pf, prefix='rm102a')
-                if rm102a_form.is_valid():
-                    rm102a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 102A Billing')
-            if rmn == '103A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm103a_form = RM103A_BillForm(data=request.POST, instance=pf, prefix='rm103a')
-                if rm103a_form.is_valid():
-                    rm103a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 103A Billing')
-
-            if rmn == '104A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm104a_form = RM104A_BillForm(data=request.POST, instance=pf, prefix='rm104a')
-                if rm104a_form.is_valid():
-                    rm104a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 104A Billing')
-
-            if rmn == '105A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm105a_form = RM105A_BillForm(data=request.POST, instance=pf, prefix='rm105a')
-                if rm105a_form.is_valid():
-                    rm105a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 105A Billing')
-
-            if rmn == '106A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm106a_form = RM106A_BillForm(data=request.POST, instance=pf, prefix='rm106a')
-                if rm106a_form.is_valid():
-                    rm106a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 106A Billing')
-
-            if rmn == '201A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm201a_form = RM201A_BillForm(data=request.POST, instance=pf, prefix='rm201a')
-                if rm201a_form.is_valid():
-                    rm201a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 201A Billing')
-
-            if rmn == '202A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm202a_form = RM202A_BillForm(data=request.POST, instance=pf, prefix='rm202a')
-                if rm202a_form.is_valid():
-                    rm202a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 202A Billing')
-
-            if rmn == '203A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm203a_form = RM203A_BillForm(data=request.POST, instance=pf, prefix='rm203a')
-                if rm203a_form.is_valid():
-                    rm203a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 203A Billing')
-
-            if rmn == '204A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm204a_form = RM204A_BillForm(data=request.POST, instance=pf, prefix='rm204a')
-                if rm204a_form.is_valid():
-                    rm204a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 204A Billing')
-
-            if rmn == '205A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm205a_form = RM205A_BillForm(data=request.POST, instance=pf, prefix='rm205a')
-                if rm205a_form.is_valid():
-                    rm205a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 205A Billing')
-
-            if rmn == '206A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm206a_form = RM206A_BillForm(data=request.POST, instance=pf, prefix='rm206a')
-                if rm206a_form.is_valid():
-                    rm206a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 206A Billing')
-
-            if rmn == '301A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm301a_form = RM301A_BillForm(data=request.POST, instance=pf, prefix='rm301a')
-                if rm301a_form.is_valid():
-                    rm301a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 301A Billing')
-
-            if rmn == '302A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm302a_form = RM302A_BillForm(data=request.POST, instance=pf, prefix='rm302a')
-                if rm302a_form.is_valid():
-                    rm302a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 302A Billing')
-
-            if rmn == '303A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm303a_form = RM303A_BillForm(data=request.POST, instance=pf, prefix='rm303a')
-                if rm303a_form.is_valid():
-                    rm303a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 303A Billing')
-
-            if rmn == '304A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm304a_form = RM304A_BillForm(data=request.POST, instance=pf, prefix='rm304a')
-                if rm304a_form.is_valid():
-                    rm304a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 304A Billing')
-
-            if rmn == '305A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm305a_form = RM305A_BillForm(data=request.POST, instance=pf, prefix='rm305a')
-                if rm305a_form.is_valid():
-                    rm305a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 305A Billing')
-
-            if rmn == '306A':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm306a_form = RM306A_BillForm(data=request.POST, instance=pf, prefix='rm306a')
-                if rm306a_form.is_valid():
-                    rm306a_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 306A Billing')
-
-            if rmn == '201B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm201b_form = RM201B_BillForm(data=request.POST, instance=pf, prefix='rm201b')
-                if rm201b_form.is_valid():
-                    rm201b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 201B Billing')
-
-            if rmn == '202B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm202b_form = RM202B_BillForm(data=request.POST, instance=pf, prefix='rm202b')
-                if rm202b_form.is_valid():
-                    rm202b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 202B Billing')
-
-            if rmn == '203B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm203b_form = RM203B_BillForm(data=request.POST, instance=pf, prefix='rm203b')
-                if rm203b_form.is_valid():
-                    rm203b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 203B Billing')
-
-            if rmn == '204B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm204b_form = RM204B_BillForm(data=request.POST, instance=pf, prefix='rm204b')
-                if rm204b_form.is_valid():
-                    rm204b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 204B Billing')
-
-            if rmn == '205B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm205b_form = RM205B_BillForm(data=request.POST, instance=pf, prefix='rm205b')
-                if rm205b_form.is_valid():
-                    rm205b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 205B Billing')
-
-            if rmn == '301B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm301b_form = RM301B_BillForm(data=request.POST, instance=pf, prefix='rm301b')
-                if rm301b_form.is_valid():
-                    rm301b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 301B Billing')
-
-            if rmn == '302B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm302b_form = RM302B_BillForm(data=request.POST, instance=pf, prefix='rm302b')
-                if rm302b_form.is_valid():
-                    rm302b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 302B Billing')
-
-            if rmn == '303B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm303b_form = RM303B_BillForm(data=request.POST, instance=pf, prefix='rm303b')
-                if rm303b_form.is_valid():
-                    rm303b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 303B Billing')
-
-            if rmn == '304B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm304b_form = RM304B_BillForm(data=request.POST, instance=pf, prefix='rm304b')
-                if rm304b_form.is_valid():
-                    rm304b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 304B Billing')
-
-            if rmn == '305B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm305b_form = RM305B_BillForm(data=request.POST, instance=pf, prefix='rm305b')
-                if rm305b_form.is_valid():
-                    rm305b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 305B Billing')
-
-            if rmn == '401B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm401b_form = RM401B_BillForm(data=request.POST, instance=pf, prefix='rm401b')
-                if rm401b_form.is_valid():
-                    rm401b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 401B Billing')
-
-            if rmn == '402B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm402b_form = RM402B_BillForm(data=request.POST, instance=pf, prefix='rm402b')
-                if rm402b_form.is_valid():
-                    rm402b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 402B Billing')
-
-            if rmn == '403B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm403b_form = RM403B_BillForm(data=request.POST, instance=pf, prefix='rm403b')
-                if rm403b_form.is_valid():
-                    rm403b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 403B Billing')
-
-            if rmn == '404B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm404b_form = RM404B_BillForm(data=request.POST, instance=pf, prefix='rm404b')
-                if rm404b_form.is_valid():
-                    rm404b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 404B Billing')
-
-            if rmn == '405B':
-                pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
-                rm405b_form = RM405B_BillForm(data=request.POST, instance=pf, prefix='rm405b')
-                if rm405b_form.is_valid():
-                    rm405b_form.save(commit=True)
-                    # -------------------
-                    create_bill(rmn)
-                    no_of_bill += 1
-                    # ------------------
-                else:
-                    messages.error(request, 'Error updating Room 405B Billing')
-
-        else:
-            if rmn == '101A':
-                rm101a_form = RM101A_BillForm(prefix='rm101a')
-
-            if rmn == '102A':
-                rm102a_form = RM102A_BillForm(prefix='rm102a')
-
-            if rmn == '103A':
-                rm103a_form = RM103A_BillForm(prefix='rm103a')
-
-            if rmn == '104A':
-                rm104a_form = RM104A_BillForm(prefix='rm104a')
-
-            if rmn == '105A':
-                rm105a_form = RM105A_BillForm(prefix='rm105a')
-
-            if rmn == '106A':
-                rm106a_form = RM106A_BillForm(prefix='rm106a')
-
-            if rmn == '201A':
-                rm201a_form = RM201A_BillForm(prefix='rm201a')
-
-            if rmn == '202A':
-                rm202a_form = RM202A_BillForm(prefix='rm202a')
-
-            if rmn == '203A':
-                rm203a_form = RM203A_BillForm(prefix='rm203a')
-
-            if rmn == '204A':
-                rm204a_form = RM204A_BillForm(prefix='rm204a')
-
-            if rmn == '205A':
-                rm205a_form = RM205A_BillForm(prefix='rm205a')
-
-            if rmn == '206A':
-                rm206a_form = RM206A_BillForm(prefix='rm206a')
-
-            if rmn == '301A':
-                rm301a_form = RM301A_BillForm(prefix='rm301a')
-
-            if rmn == '302A':
-                rm302a_form = RM302A_BillForm(prefix='rm302a')
-
-            if rmn == '303A':
-                rm303a_form = RM303A_BillForm(prefix='rm303a')
-
-            if rmn == '304A':
-                rm304a_form = RM304A_BillForm(prefix='rm304a')
-
-            if rmn == '305A':
-                rm305a_form = RM305A_BillForm(prefix='rm305a')
-
-            if rmn == '306A':
-                rm306a_form = RM306A_BillForm(prefix='rm306a')
-
-            if rmn == '201B':
-                rm201b_form = RM201B_BillForm(prefix='rm201b')
-
-            if rmn == '202B':
-                rm202b_form = RM202B_BillForm(prefix='rm202b')
-
-            if rmn == '203B':
-                rm203b_form = RM203B_BillForm(prefix='rm203b')
-
-            if rmn == '204B':
-                rm204b_form = RM204B_BillForm(prefix='rm204b')
-
-            if rmn == '205B':
-                rm205b_form = RM205B_BillForm(prefix='rm205b')
-
-            if rmn == '301B':
-                rm301b_form = RM301B_BillForm(prefix='rm301b')
-
-            if rmn == '302B':
-                rm302b_form = RM302B_BillForm(prefix='rm302b')
-
-            if rmn == '303B':
-                rm303b_form = RM303B_BillForm(prefix='rm303b')
-
-            if rmn == '304B':
-                rm304b_form = RM304B_BillForm(prefix='rm304b')
-
-            if rmn == '305B':
-                rm305b_form = RM305B_BillForm(prefix='rm305b')
-
-            if rmn == '401B':
-                rm401b_form = RM401B_BillForm(prefix='rm401b')
-
-            if rmn == '402B':
-                rm402b_form = RM402B_BillForm(prefix='rm402b')
-
-            if rmn == '403B':
-                rm403b_form = RM403B_BillForm(prefix='rm403b')
-
-            if rmn == '404B':
-                rm404b_form = RM404B_BillForm(prefix='rm404b')
-
-            if rmn == '405B':
-                rm405b_form = RM405B_BillForm(prefix='rm405b')
-
+def maintenance_charge(request):
     if request.method == 'POST':
 
-        # WRITE TO BILL SUMMARY AND BILL SLIP (Localhost only, at this time !!!!)
-        create_exel_sheet(request)
+        maintenance_form = MaintenanceForm(data=request.POST)
 
-        # -----------------
-        # FOR PYTHONANYWHERE HOST (uncomment the following line !!)
-        # messages.success(request, 'Total {} bills created.'.format(no_of_bill))
-        # -----------------
-        return HttpResponseRedirect(reverse_lazy('admin_page'))
+        if maintenance_form.is_valid():
+
+            cd = maintenance_form.cleaned_data
+
+            # Create a new object but avoid saving it yet
+            new_ma_charge = maintenance_form.save(commit=False)
+
+            new_ma_charge.desc = 'Maintenance cost'
+
+            # Save the new object(MaintenanceCharge) to DB for ref.
+            new_ma_charge.save()
+
+            rmn = cd['room_no']
+            pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
+
+            # INCREAMENT & SAVE VALUE TO PF.MAINT_COST
+            pf.maint_cost += cd['job_cost']
+            pf.save()
+
+            messages.success(request, 'Maintenance cost has been charged to Room: {}.'.format(rmn))
+
+            return HttpResponseRedirect(reverse_lazy('admin_page'))
+        else:
+            messages.error(request, 'Error: new record was not saved !!!')
+
     else:
-        return render(request, 'ams/billing.html', {'tenant_pf': tenant_pf, 'section': 'billing',
-                                                    'rm101a_form': rm101a_form,
-                                                    'rm102a_form': rm102a_form,
-                                                    'rm103a_form': rm103a_form,
-                                                    'rm104a_form': rm104a_form,
-                                                    'rm105a_form': rm105a_form,
-                                                    'rm106a_form': rm106a_form,
+        maintenance_form = MaintenanceForm()
 
-                                                    'rm201a_form': rm201a_form,
-                                                    'rm202a_form': rm202a_form,
-                                                    'rm203a_form': rm203a_form,
-                                                    'rm204a_form': rm204a_form,
-                                                    'rm205a_form': rm205a_form,
-                                                    'rm206a_form': rm206a_form,
-
-                                                    'rm301a_form': rm301a_form,
-                                                    'rm302a_form': rm302a_form,
-                                                    'rm303a_form': rm303a_form,
-                                                    'rm304a_form': rm304a_form,
-                                                    'rm305a_form': rm305a_form,
-                                                    'rm306a_form': rm306a_form,
-
-                                                    'rm201b_form': rm201b_form,
-                                                    'rm202b_form': rm202b_form,
-                                                    'rm203b_form': rm203b_form,
-                                                    'rm204b_form': rm204b_form,
-                                                    'rm205b_form': rm205b_form,
-
-                                                    'rm301b_form': rm301b_form,
-                                                    'rm302b_form': rm302b_form,
-                                                    'rm303b_form': rm303b_form,
-                                                    'rm304b_form': rm304b_form,
-                                                    'rm305b_form': rm305b_form,
-
-                                                    'rm401b_form': rm401b_form,
-                                                    'rm402b_form': rm402b_form,
-                                                    'rm403b_form': rm403b_form,
-                                                    'rm404b_form': rm404b_form,
-                                                    'rm405b_form': rm405b_form,
-
-                                                    })
+    return render(request, 'ams/maintenanace_charge.html', {'maintenance_form': maintenance_form})
