@@ -1680,7 +1680,7 @@ def monthly_report(request):
                                                        'tovd_b': tovd_b,
 
                                                        'tlf_b': tlf_b,
-                                                       'tma': tma_b,
+                                                       'tma_b': tma_b,
 
                                                        'tadj_b': tadj_b,
 
@@ -2060,13 +2060,15 @@ def tenant_bill_subroutine(tn_bill):
 
     room_with_acc_cost = tn_bill.room_cost + tn_bill.room_acc_cost + tn_bill.adjust
 
+    pay_amt = tn_bill.payment_amount
+
     bill_misc = tn_bill.late_fee + tn_bill.maint_cost
 
     if tn_bill.status == 'open':
         paid_str = 'รอชำระ'
     else:
-        paid_str = 'ชำระแล้ว ณ วันที่ {} {} {}'.format(pay_date.day, get_thai_month_name(str(pay_date)),
-                                                       get_thai_year(str(pay_date)))
+        paid_str = 'ชำระแล้ว ณ วันที่ {0} {1} {2} จำนวน {3:,.0f} บาท'.format(pay_date.day, get_thai_month_name(str(pay_date)),
+                                                       get_thai_year(str(pay_date)),pay_amt)
 
     # TEMPORARY UNTIL OVD OF RM204A HAS BEEN COVERED
     rn = tn_bill.room_no
