@@ -3,8 +3,9 @@
 {% extends "ams_admin_base_html.html" %}
 {% load static %}
 {% load humanize %}
+{% load ams_tags %}
 
-{% block title %}Monthly Report{% endblock %}
+{% block title %}Monthly Report Mini{% endblock %}
 
 {% block script %}
     <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
@@ -13,16 +14,9 @@
 {% block style %}
 
     <style>
-        div #hb_ref, .bill_ref {
-            display: block;
-            width: 4em;
-            float: left;
-            text-align: left;
-            font-size: medium;
-        }
+
 
         div #hname, .name {
-
             display: block;
             width: 12em;
             float: left;
@@ -31,7 +25,6 @@
         }
 
         div #hroom, .room {
-
             display: block;
             width: 3em;
             float: left;
@@ -40,8 +33,8 @@
             color: red;
         }
 
-        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hlf, div #hma, div #hadj, div #hbf,
-        .room_acc, .elec, .water, .com_ser, .oth_com_ser, .ovd, .lf_ma, .ma, .adj, .bf {
+        div #hrcac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hlf,
+        .elec, .water, .com_ser, .oth_com_ser, .ovd, .lf_ma {
             display: block;
             width: 3.7em;
             float: left;
@@ -59,50 +52,32 @@
             font-size: medium;
         }
 
-        div #hp_date, .p_date {
-
-            display: block;
-            width: 7em;
-            float: left;
-            text-align: right;
-            font-size: medium;
-        }
-
         .tt_span {
             display: block;
-            width: 19em;
+            width: 15em;
             text-align: center;
             float: left;
             font-size: medium;
         }
 
-        div #hb_ref,
         div #hname,
         div #hroom,
-        div #hrac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd,div #hlf, div #hma, div #hadj, div #hbf,
-        div #hrcac, div #hbt, div #hp_amt,
-        div #hp_date {
+        div #hrcac, div #hec, div #hwc, div #hcsc, div #hosc, div #hovd, div #hlf,
+        div #hrcac, div #hbt, div #hp_amt {
             color: white;
             background-color: blue;
         }
 
         #atotal .tt_span,
-        #atotal .room_acc_cost, #atotal .room_acc, #atotal .elec, #atotal .water,
-        #atotal .com_ser, #atotal .oth_com_ser, #atotal .adj, #atotal .ovd,
-        #atotal .lf_ma, #atotal .ma,
-        #atotal .total, #atotal .p_amt, #atotal .bf, #atotal .p_date,
-
-        #btotal .tt_span,
-        #btotal .room_acc_cost, #btotal .room_acc, #btotal .elec, #btotal .water,
-        #btotal .com_ser, #btotal .oth_com_ser, #btotal .adj, #btotal .ovd,
-        #btotal .lf_ma, #btotal .ma,
-        #btotal .total, #btotal .p_amt, #btotal .bf, #btotal .p_date,
-
-        #abtotal .tt_span,
-        #abtotal .room_acc_cost, #abtotal .room_acc, #abtotal .elec, #abtotal .water,
-        #abtotal .com_ser, #abtotal .oth_com_ser, #abtotal .adj, #abtotal .ovd,
-        #abtotal .lf_ma, #abtotal .ma,
-        #abtotal .total, #abtotal .p_amt, #abtotal .bf, #abtotal .p_date {
+        #atotal .room_acc_cost, #atotal .elec, #atotal .water,
+        #atotal .com_ser, #atotal .oth_com_ser, #atotal .ovd,
+        #atotal .lf_ma, #atotal .total, #atotal .p_amt, #btotal .tt_span,
+        #btotal .room_acc_cost, #btotal .elec, #btotal .water,
+        #btotal .com_ser, #btotal .oth_com_ser, #btotal .ovd,
+        #btotal .lf_ma, #btotal .total, #btotal .p_amt, #abtotal .tt_span,
+        #abtotal .room_acc_cost, #abtotal .elec, #abtotal .water,
+        #abtotal .com_ser, #abtotal .oth_com_ser, #abtotal .ovd,
+        #abtotal .lf_ma, #abtotal .total, #abtotal .p_amt {
             color: black;
             background: #0ac33e;
         }
@@ -115,26 +90,19 @@
     <h2>Monthly Report-{{ mnth_name }} {{ yr }} (Building: {{ bld }} )</h2>
 
     <div id="hx">
-        <label id="hb_ref">REF.</label>
+
         <label id="hname">NAME</label>
         <label id="hroom">RMN</label>
-        <label id="hrc">RC</label>
-        <label id="hrac">RAC</label>
+        <label id="hrcac">RCAC</label>
         <label id="hec">EC</label>
         <label id="hwc">WC</label>
         <label id="hcsc">CSC</label>
         <label id="hosc">OSC</label>
         <label id="hovd">OVD</label>
-
-        <label id="hlf">LF</label>
-        <label id="hma">MA</label>
-
-
-        <label id="hadj">ADJ</label>
+        <label id="hlf">LFMA</label>
         <label id="hbt">TOTAL</label>
         <label id="hp_amt">P_AMT</label>
-        <label id="hbf">B/F</label>
-        <label id="hp_date">P_DATE</label>
+
 
         <br>
     </div>
@@ -142,54 +110,34 @@
     <div id="dab">
         {% if opl_a %}
             {% for opbl in opl_a %}
-                <span class="bill_ref">{{ opbl.bill_ref }}</span>
                 <span class="name">{{ opbl.tenant_name }}</span>
                 <span class="room">{{ opbl.room_no }}</span>
-                <span class="room_cost">{{ opbl.room_cost|floatformat:0|intcomma }}</span>
-                <span class="room_acc">{{ opbl.room_acc_cost |floatformat:0|intcomma }}</span>
+                <span class="room_acc_cost"> {% room_cost_plus_acc_cost_with_adj opbl %}</span>
                 <span class="elec">{{ opbl.electricity_cost|floatformat:0|intcomma }}</span>
                 <span class="water">{{ opbl.water_cost|floatformat:0|intcomma }}</span>
                 <span class="com_ser">{{ opbl.common_ser_cost |floatformat:0|intcomma }}</span>
                 <span class="oth_com_ser">{{ opbl.other_ser_cost|floatformat:0|intcomma }}</span>
                 <span class="ovd">{{ opbl.overdue_amount|floatformat:0|intcomma }}</span>
-
-                <span class="lf">{{ opbl.late_fee|floatformat:0|intcomma }}</span>
-                <span class="ma">{{ opbl.maint_cost|floatformat:0|intcomma }}</span>
-
-
-
-                <span class="adj">{{ opbl.adjust|floatformat:0|intcomma }}</span>
+                <span class="lf_ma">{% late_fee_plus_ma opbl %}</span>
                 <span class="total">{{ opbl.bill_total|floatformat:0|intcomma }}</span>
                 <span class="p_amt">{{ opbl.payment_amount|floatformat:0|intcomma }}</span>
-                <span class="bf">{{ opbl.cf_amount|floatformat:0|intcomma }}</span>
-                <span class="p_date">{{ opbl.payment_date }}</span>
                 <br>
             {% endfor %}
         {% endif %}
 
         {% if opl_b %}
             {% for opbl in opl_b %}
-                <span class="bill_ref">{{ opbl.bill_ref }}</span>
                 <span class="name">{{ opbl.tenant_name }}</span>
                 <span class="room">{{ opbl.room_no }}</span>
-                <span class="room_cost">{{ opbl.room_cost|floatformat:0|intcomma }}</span>
-                <span class="room_acc">{{ opbl.room_acc_cost|floatformat:0|intcomma }}</span>
+                <span class="room_acc_cost"> {% room_cost_plus_acc_cost_with_adj opbl %}</span>
                 <span class="elec">{{ opbl.electricity_cost |floatformat:0|intcomma }}</span>
                 <span class="water">{{ opbl.water_cost|floatformat:0|intcomma }}</span>
                 <span class="com_ser">{{ opbl.common_ser_cost|floatformat:0|intcomma }}</span>
                 <span class="oth_com_ser">{{ opbl.other_ser_cost |floatformat:0|intcomma }}</span>
                 <span class="ovd">{{ opbl.overdue_amount|floatformat:0|intcomma }}</span>
-
-                <span class="lf">{{ opbl.late_fee|floatformat:0|intcomma }}</span>
-                <span class="ma">{{ opbl.maint_cost|floatformat:0|intcomma }}</span>
-
-
-
-                <span class="adj">{{ opbl.adjust|floatformat:0|intcomma }}</span>
+                <span class="lf_ma">{% late_fee_plus_ma opbl %}</span>
                 <span class="total">{{ opbl.bill_total|floatformat:0|intcomma }}</span>
                 <span class="p_amt">{{ opbl.payment_amount|floatformat:0|intcomma }}</span>
-                <span class="bf">{{ opbl.cf_amount|floatformat:0|intcomma }}</span>
-                <span class="p_date">{{ opbl.payment_date }}</span>
                 <br>
             {% endfor %}
         {% endif %}
@@ -199,23 +147,15 @@
     <div id="atotal">
         {% if opl_a and not opl_b %}
             <span class="tt_span">TOTAL</span>
-            <span class="room_cost">{{ trc_a|floatformat:0|intcomma }}</span>
-            <span class="room_acc">{{ trac_a|floatformat:0|intcomma }}</span>
+            <span class="room_acc_cost">{{ trcac_a|floatformat:0|intcomma }}</span>
             <span class="elec">{{ tec_a |floatformat:0|intcomma }}</span>
             <span class="water">{{ twc_a|floatformat:0|intcomma }}</span>
             <span class="com_ser">{{ tcsc_a|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_a|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_a|floatformat:0|intcomma }}</span>
-
-            <span class="lf">{{ tlf_a|floatformat:0|intcomma }}</span>
-            <span class="ma">{{ tma_a|floatformat:0|intcomma }}</span>
-
-
-            <span class="adj">{{ tadj_a|floatformat:0|intcomma }}</span>
+            <span class="lf_ma">{{ tlf_ma_a |floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_a|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_a|floatformat:0|intcomma }}</span>
-            <span class="bf">{{ tbf_a|floatformat:0|intcomma }}</span>
-            <span class="p_date">.</span>
             <br>
         {% endif %}
 
@@ -224,23 +164,15 @@
     <div id="btotal">
         {% if opl_b and not opl_a %}
             <span class="tt_span">TOTAL</span>
-            <span class="room_cost">{{ trc_b|floatformat:0|intcomma }}</span>
-            <span class="room_acc">{{ trac_b|floatformat:0|intcomma }}</span>
+            <span class="room_acc_cost">{{ trcac_b|floatformat:0|intcomma }}</span>
             <span class="elec">{{ tec_b |floatformat:0|intcomma }}</span>
             <span class="water">{{ twc_b|floatformat:0|intcomma }}</span>
             <span class="com_ser">{{ tcsc_b|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_b|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_b|floatformat:0|intcomma }}</span>
-
-             <span class="lf">{{ tlf_b|floatformat:0|intcomma }}</span>
-             <span class="ma">{{ tma_b|floatformat:0|intcomma }}</span>
-
-
-            <span class="adj">{{ tadj_b|floatformat:0|intcomma }}</span>
+            <span class="lf_ma">{{ tlf_ma_b|floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_b|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_b|floatformat:0|intcomma }}</span>
-            <span class="bf">{{ tbf_b|floatformat:0|intcomma }}</span>
-            <span class="p_date">.</span>
             <br>
         {% endif %}
     </div>
@@ -248,23 +180,16 @@
     <div id="abtotal">
         {% if opl_a and opl_b %}
             <span class="tt_span">TOTAL</span>
-            <span class="room_cost">{{ trc_ab|floatformat:0|intcomma }}</span>
-            <span class="room_acc">{{ trac_ab|floatformat:0|intcomma }}</span>
+            <span class="room_acc_cost">{{ trcac_ab|floatformat:0|intcomma }}</span>
             <span class="elec">{{ tec_ab |floatformat:0|intcomma }}</span>
             <span class="water">{{ twc_ab|floatformat:0|intcomma }}</span>
             <span class="com_ser">{{ tcsc_ab|floatformat:0|intcomma }}</span>
             <span class="oth_com_ser">{{ tosc_ab|floatformat:0|intcomma }}</span>
             <span class="ovd">{{ tovd_ab|floatformat:0|intcomma }}</span>
-
-            <span class="lf">{{ tlf_ab|floatformat:0|intcomma }}</span>
-            <span class="ma">{{ tma_ab|floatformat:0|intcomma }}</span>
-
-
-            <span class="adj">{{ tadj_ab|floatformat:0|intcomma }}</span>
+            <span class="lf_ma">{{ tlf_ma_ab|floatformat:0|intcomma }}</span>
             <span class="total">{{ tbt_ab|floatformat:0|intcomma }}</span>
             <span class="p_amt">{{ tpa_ab|floatformat:0|intcomma }}</span>
-            <span class="bf">{{ tbf_ab|floatformat:0|intcomma }}</span>
-            <span class="p_date">.</span>
+
             <br>
         {% endif %}
     </div>

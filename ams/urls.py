@@ -38,5 +38,6 @@ urlpatterns = [
     path('pay_rent/str<bref>/', views.pay_rent, name='pay_rent'),
 
     path('maintenance_charge/', views.maintenance_charge, name='maintenance_charge'),
+    path('monthly_report_mini/', views.monthly_report_mini, name='monthly_report_mini'),
 
 ]

@@ -73,7 +73,8 @@
 {% block content %}
     <h1>Monthly Report</h1>
 
-    <form action="{% url 'monthly_report' %}" method="post">
+{#    <form action="{% url 'monthly_report' %}" method="post">#} # USE THIS FULL MONTHLY REPORT
+     <form action="{% url 'monthly_report_mini' %}" method="post"> # USE THIS MINI MONTHLY REPORT
         {% csrf_token %}
 
         {#        <div class="fld_set">#}

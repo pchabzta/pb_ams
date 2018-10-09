@@ -1461,7 +1461,7 @@ def get_aware_datetime(date_str):
         ret = make_aware(ret)
     return ret
 
-
+# FULL MONTHLY REPORT ------------------------------------------------------------------
 @login_required
 def monthly_report(request):
     bld = request.POST['bld']
@@ -1601,8 +1601,8 @@ def monthly_report(request):
             tosc_b += bill.other_ser_cost
             tovd_b += bill.overdue_amount
 
-            tlf_b += bill.overdue_amount
-            tma_b += bill.overdue_amount
+            tlf_b += bill.late_fee
+            tma_b += bill.maint_cost
 
             tadj_b += bill.adjust
 
@@ -1707,6 +1707,180 @@ def monthly_report(request):
 
                                                        })
 
+
+# MINI MONTHLY REPORT ------------------------------------------------------------------
+
+@login_required
+def monthly_report_mini(request):
+    bld = request.POST['bld']
+    if bld == 'AB':
+        bld = 'A&B'
+
+    mnth = int(request.POST['month'])
+    mnth_name = get_eng_month_name(mnth)
+    yr = int(request.POST['year'])
+
+    # start_date = datetime.date(yr, mnth, 1)
+    # end_date = datetime.date(yr, mnth, 30) # USE 30 TO AVOID OUT-OF-IDX RANGE
+
+    # --------------------------------------------------------------------------
+    start_date = datetime.datetime(yr, mnth, 1)
+    end_date = datetime.datetime(yr, mnth, 30)  # USE 30 TO AVOID OUT OF INDX RANGE
+
+    start_date = start_date.date()
+    end_date = end_date.date()
+    # --------------------------------------------------------------------------
+
+    opl_a = None
+    opl_b = None
+    if bld == 'A':
+        opl_a = Billing.objects.filter(status='close', room_no__endswith='A',
+                                       bill_date__range=(start_date, end_date)).order_by('room_no')
+
+    if bld == 'B':
+        opl_b = Billing.objects.filter(status='close', room_no__endswith='B',
+                                       bill_date__range=(start_date, end_date)).order_by('room_no')
+
+    if bld == 'A&B':
+        opl_a = Billing.objects.filter(status='close', room_no__endswith='A',
+                                       bill_date__range=(start_date, end_date)).order_by('room_no')
+
+        opl_b = Billing.objects.filter(status='close', room_no__endswith='B',
+
+                                       bill_date__range=(start_date, end_date)).order_by('room_no')
+
+    trcac_a = 0
+
+    tec_a = 0
+    twc_a = 0
+    tcsc_a = 0
+    tosc_a = 0
+    tovd_a = 0
+
+    tlf_ma_a = 0
+
+    tbt_a = 0
+    tpa_a = 0
+
+    trcac_b = 0
+
+    tec_b = 0
+    twc_b = 0
+    tcsc_b = 0
+    tosc_b = 0
+    tovd_b = 0
+
+    tlf_ma_b = 0
+
+    tbt_b = 0
+    tpa_b = 0
+
+    trcac_ab = 0
+
+    tec_ab = 0
+    twc_ab = 0
+    tcsc_ab = 0
+    tosc_ab = 0
+    tovd_ab = 0
+
+    tlf_ma_ab = 0
+
+    tbt_ab = 0
+    tpa_ab = 0
+
+    if opl_a:
+        for bill in opl_a:
+            trcac_a += (bill.room_cost + bill.room_acc_cost + bill.adjust)
+
+            tec_a += bill.electricity_cost
+            twc_a += bill.water_cost
+            tcsc_a += bill.common_ser_cost
+            tosc_a += bill.other_ser_cost
+            tovd_a += bill.overdue_amount
+
+            tlf_ma_a += (bill.late_fee + bill.maint_cost)
+
+            tbt_a += bill.bill_total
+            tpa_a += bill.payment_amount
+
+    if opl_b:
+        for bill in opl_b:
+            trcac_b += (bill.room_cost + bill.room_acc_cost + bill.adjust)
+
+            tec_b += bill.electricity_cost
+            twc_b += bill.water_cost
+            tcsc_b += bill.common_ser_cost
+            tosc_b += bill.other_ser_cost
+            tovd_b += bill.overdue_amount
+
+            tlf_ma_b += (bill.late_fee + bill.maint_cost)
+
+            tbt_b += bill.bill_total
+            tpa_b += bill.payment_amount
+
+    if opl_a and opl_b:
+        trcac_ab = trcac_a + trcac_b
+
+        tec_ab = tec_a + tec_b
+        twc_ab = twc_a + twc_b
+        tcsc_ab = tcsc_a + tcsc_b
+        tosc_ab = tosc_a + tosc_b
+        tovd_ab = tovd_a + tovd_b
+
+        tlf_ma_ab = tlf_ma_a + tlf_ma_b
+
+        tbt_ab = tbt_a + tbt_b
+        tpa_ab = tpa_a + tpa_b
+
+    return render(request, 'ams/monthly_report_mini.html', {'opl_a': opl_a,
+                                                            'opl_b': opl_b,
+                                                            'bld': bld,
+                                                            'mnth_name': mnth_name,
+                                                            'yr': yr,
+
+                                                            'trcac_a': trcac_a,
+
+                                                            'tec_a': tec_a,
+                                                            'twc_a': twc_a,
+                                                            'tcsc_a': tcsc_a,
+                                                            'tosc_a': tosc_a,
+                                                            'tovd_a': tovd_a,
+
+                                                            'tlf_ma_a': tlf_ma_a,
+
+                                                            'tbt_a': tbt_a,
+                                                            'tpa_a': tpa_a,
+
+                                                            'trcac_b': trcac_b,
+
+                                                            'tec_b': tec_b,
+                                                            'twc_b': twc_b,
+                                                            'tcsc_b': tcsc_b,
+                                                            'tosc_b': tosc_b,
+                                                            'tovd_b': tovd_b,
+
+                                                            'tlf_ma_b': tlf_ma_b,
+
+                                                            'tbt_b': tbt_b,
+                                                            'tpa_b': tpa_b,
+
+                                                            'trcac_ab': trcac_ab,
+
+                                                            'tec_ab': tec_ab,
+                                                            'twc_ab': twc_ab,
+                                                            'tcsc_ab': tcsc_ab,
+                                                            'tosc_ab': tosc_ab,
+                                                            'tovd_ab': tovd_ab,
+
+                                                            'tlf_ma_ab': tlf_ma_ab,
+
+                                                            'tbt_ab': tbt_ab,
+                                                            'tpa_ab': tpa_ab,
+
+                                                            })
+
+
+# -------------------------------------------------------------------------------------------
 
 @login_required
 def extra_service(request):
@@ -2067,8 +2241,9 @@ def tenant_bill_subroutine(tn_bill):
     if tn_bill.status == 'open':
         paid_str = 'รอชำระ'
     else:
-        paid_str = 'ชำระแล้ว ณ วันที่ {0} {1} {2} จำนวน {3:,.0f} บาท'.format(pay_date.day, get_thai_month_name(str(pay_date)),
-                                                       get_thai_year(str(pay_date)),pay_amt)
+        paid_str = 'ชำระแล้ว ณ วันที่ {0} {1} {2} จำนวน {3:,.0f} บาท'.format(pay_date.day,
+                                                                             get_thai_month_name(str(pay_date)),
+                                                                             get_thai_year(str(pay_date)), pay_amt)
 
     # TEMPORARY UNTIL OVD OF RM204A HAS BEEN COVERED
     rn = tn_bill.room_no

@@ -64,7 +64,7 @@ def display_individual_tenant_bill_data(rmno):
 
     bill_misc = tenant_bill.late_fee + tenant_bill.maint_cost
 
-    return {'tenant_bill': tenant_bill, 'room_cost_acc': room_cost_acc,'bill_misc':bill_misc}
+    return {'tenant_bill': tenant_bill, 'room_cost_acc': room_cost_acc, 'bill_misc': bill_misc}
 
 
 @register.simple_tag
@@ -123,3 +123,28 @@ def room_other_cost(rmno):
     oth_ser_cost = exd['Garbage'] + exd['Parking'] + exd['Wifi'] + exd['Cable TV']
 
     return '{0:>3,.0f}'.format(oth_ser_cost)
+
+
+@register.simple_tag
+def room_cost_plus_acc_cost_with_adj(tn_bill):
+    rm_c_acc_c = tn_bill.room_cost + tn_bill.room_acc_cost + tn_bill.adjust
+
+    return '{0:,.0f}'.format(rm_c_acc_c)
+
+
+@register.simple_tag
+def late_fee_plus_ma(tn_bill):
+    lf_ma = tn_bill.late_fee + tn_bill.maint_cost
+
+    return '{0:,.0f}'.format(lf_ma)
+
+
+@register.simple_tag
+def late_fee_plus_ma_ab(tn_bill_a,tn_bill_b):
+    lf_ma_a = tn_bill_a.late_fee + tn_bill_a.maint_cost
+    lf_ma_b = tn_bill_b.late_fee + tn_bill_b.maint_cost
+    total_lf_ma =lf_ma_a+lf_ma_b
+
+    return '{0:,.0f}'.format(total_lf_ma)
+
+
