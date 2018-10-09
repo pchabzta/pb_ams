@@ -83,7 +83,6 @@ class TenantProfile(models.Model):
     # USE PLACEHOLDER (NO DEFAULT VALUE) INITIAL VALUE TO BE PROVIDED WHEN SAVE TO DB
     elec_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)
     water_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)
-    misc_cost = models.DecimalField(max_digits=7, decimal_places=2, null=True)
 
     late_fee = models.DecimalField(max_digits=7, decimal_places=2, default=0)  # no need to use placeholder
     maint_cost = models.DecimalField(max_digits=7, decimal_places=2, default=0)

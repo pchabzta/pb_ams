@@ -7,14 +7,13 @@ from .forms import PFormRM401B, PFormRM402B, PFormRM403B, PFormRM404B, PFormRM40
 from .forms import PaymentForm
 from .forms import Elec_cpu_change, Water_cpu_change, PhoneNoMessage
 from .forms import MaintenanceForm
-
-from ams.models import Extra, Room_type, MaintenanceCharge
+from .models import Extra, Room, Room_type, MaintenanceCharge, TenantProfile
 import datetime
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import is_aware, is_naive, make_aware, make_naive
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from .forms import TenantCreateForm, TenantProfileCreateForm, TenantProfile
+from .forms import TenantCreateForm, TenantProfileCreateForm
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
@@ -1408,13 +1407,6 @@ def payment(request):
                                                     })
 
 
-# def payment_individual(request):
-#     return render(request, 'ams/report_type.html', {'section': 'report'})
-
-
-# @login_required
-# def report(request):
-#     return render(request, 'ams/report_type.html', {'section': 'report'})
 
 
 @login_required
@@ -1460,6 +1452,7 @@ def get_aware_datetime(date_str):
     if not is_aware(ret):
         ret = make_aware(ret)
     return ret
+
 
 # FULL MONTHLY REPORT ------------------------------------------------------------------
 @login_required
@@ -1955,48 +1948,23 @@ def current_tenant(request):
 
 @login_required
 def vacant_rooms(request):
-    oc_rooms = []
-    vc_rooms = []
-
-    all_rooms_dict = [{'rn': '101A', 'rmc': 2400}, {'rn': '102A', 'rmc': 2400}, {'rn': '103A', 'rmc': 2400},
-                      {'rn': '104A', 'rmc': 2400}, {'rn': '105A', 'rmc': 2400}, {'rn': '106A', 'rmc': 2400},
-
-                      {'rn': '201A', 'rmc': 2400}, {'rn': '202A', 'rmc': 2400}, {'rn': '203A', 'rmc': 2400},
-                      {'rn': '204A', 'rmc': 2400}, {'rn': '205A', 'rmc': 2400}, {'rn': '206A', 'rmc': 2400},
-
-                      {'rn': '301A', 'rmc': 2400}, {'rn': '302A', 'rmc': 2400}, {'rn': '303A', 'rmc': 2400},
-                      {'rn': '304A', 'rmc': 2400}, {'rn': '305A', 'rmc': 2400}, {'rn': '306A', 'rmc': 2400},
-
-                      {'rn': '201B', 'rmc': 2500}, {'rn': '202B', 'rmc': 2500}, {'rn': '203B', 'rmc': 2500},
-                      {'rn': '204B', 'rmc': 2500}, {'rn': '205B', 'rmc': 3100},
-
-                      {'rn': '301B', 'rmc': 2500}, {'rn': '302B', 'rmc': 2500}, {'rn': '303B', 'rmc': 2500},
-                      {'rn': '304B', 'rmc': 2500}, {'rn': '305B', 'rmc': 3100},
-
-                      {'rn': '401B', 'rmc': 2500}, {'rn': '402B', 'rmc': 2500}, {'rn': '403B', 'rmc': 2500},
-                      {'rn': '404B', 'rmc': 2500}, {'rn': '405B', 'rmc': 3100}, ]
-
-    cur_tenant = TenantProfile.objects.all().order_by('start_date')
-
-    for ct in cur_tenant:
-        rn_rc_dict = {}
-        rn_rc_dict.setdefault('rn', '')
-        rn_rc_dict.setdefault('rmc', 0.0)
-
-        rn_rc_dict.update({'rn': str(ct.room_no), 'rmc': ct.room_no.room_type.rate})
-
-        oc_rooms.append(rn_rc_dict)
-
-    for armd in all_rooms_dict:
-        if armd not in oc_rooms:
-            vc_rooms.append(armd)
-
     current_dt = datetime.datetime.now()
 
-    return render(request, 'ams/vacant_rooms.html',
-                  {'cur_tenant': cur_tenant, 'vc_rooms': vc_rooms, 'current_dt': current_dt})
+    all_room = Room.objects.all()
+    cur_tn = TenantProfile.objects.all()
+    oc_rm_set = []
+    vac_rm_set = []
+    for tn in cur_tn:
+        oc_rm_set.append(tn.room_no.room_no)
+
+    for rm in all_room:
+        if rm.room_no not in oc_rm_set:
+            vac_rm_set.append(rm.room_no)
+
+    return render(request, 'ams/vacant_rooms.html', {'vac_rm_set': vac_rm_set, 'current_dt': current_dt})
 
 
+# -----------------------------------------------------------------------------------
 # SENDING MESSAGE FROM LOCALHOST AND FROM WEB !!!! **********************************************************
 def send_message(to_phone_no, msg):
     account_sid = GV.Account_SID

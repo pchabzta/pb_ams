@@ -3,7 +3,7 @@ from django.utils.safestring import mark_safe
 import markdown
 from django.shortcuts import get_object_or_404
 
-from ams.models import Billing
+from ams.models import Billing, Room_type, Room
 from ams.models import TenantProfile
 
 register = template.Library()
@@ -140,11 +140,21 @@ def late_fee_plus_ma(tn_bill):
 
 
 @register.simple_tag
-def late_fee_plus_ma_ab(tn_bill_a,tn_bill_b):
+def late_fee_plus_ma_ab(tn_bill_a, tn_bill_b):
     lf_ma_a = tn_bill_a.late_fee + tn_bill_a.maint_cost
     lf_ma_b = tn_bill_b.late_fee + tn_bill_b.maint_cost
-    total_lf_ma =lf_ma_a+lf_ma_b
+    total_lf_ma = lf_ma_a + lf_ma_b
 
     return '{0:,.0f}'.format(total_lf_ma)
 
 
+@register.simple_tag
+def room_cost(rmn):
+    rmn_rmc_dict = {}
+    all_room = Room.objects.all()
+    for rm in all_room:
+        rmn_rmc_dict.update({rm.room_no: rm.room_type.rate})
+
+    rm_cost = rmn_rmc_dict[rmn]
+
+    return '{0:,.0f}'.format(rm_cost)

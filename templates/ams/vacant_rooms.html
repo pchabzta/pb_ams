@@ -1,6 +1,7 @@
 {% extends "ams_admin_base_html.html" %}
 {% load static %}
 {% load humanize %}
+{% load ams_tags %}
 
 {% block title %}Vacant rooms{% endblock %}
 
@@ -70,9 +71,9 @@
 
     <div id="da">
 
-        {% for e in vc_rooms %}
-            <span class="rn">{{ e.rn }}</span>
-            <span class="rmc">{{ e.rmc|floatformat:0|intcomma }}</span><br>
+        {% for rn in vac_rm_set %}
+            <span class="rn">{{ rn }}</span>
+            <span class="rmc">{% room_cost rn %}</span><br>
         {% endfor %}
 
     </div>
