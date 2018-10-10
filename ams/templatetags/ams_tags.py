@@ -51,9 +51,11 @@ def markdown_format(text):
 def display_tenant_bill_data(rmno):
     tenant_bill = get_object_or_404(Billing, room_no=rmno, status='open')
 
+    rm_c_ac_c_plus_adj = tenant_bill.room_cost + tenant_bill.room_acc_cost + tenant_bill.adjust
+
     bill_misc = tenant_bill.late_fee + tenant_bill.maint_cost
 
-    return {'tenant_bill': tenant_bill, 'bill_misc': bill_misc}
+    return {'tenant_bill': tenant_bill, 'rm_c_ac_c_plus_adj': rm_c_ac_c_plus_adj, 'bill_misc': bill_misc}
 
 
 @register.inclusion_tag('ams/payment_individual_tag.html')

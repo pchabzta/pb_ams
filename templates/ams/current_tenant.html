@@ -160,10 +160,9 @@
         <label id="hrn">RNO</label>
         <label id="hname">NAME</label>
         <label id="hhp">HP</label>
-{#        <label id="hpin">PIN</label>#}
         <label id="hrmc">RMC</label>
         <label id="hrmacc">RAC</label>
-        <label id="hrmoc">ROC</label>
+        <label id="hrmoc">OSC</label>
         <label id="hdepo">DEPO</label>
         <label id="hadj">ADJ</label>
         <label id="hovd">OVD</label>
@@ -177,7 +176,6 @@
             <span class="rn">{{ tn.room_no }}</span>
             <span class="name">{{ tn.tenant }}</span>
             <span class="hp">{{ tn.phone }}</span>
-{#            <span class="pin">{{ tn.pin }}</span>#}
             <span class="rmc">{{ tn.room_no.room_type.rate|floatformat:0|intcomma }}</span>
             <span class="rmacc">{% room_acc_cost tn.room_no.room_no %}  </span>
             <span class="rmoc">{% room_other_cost tn.room_no.room_no %} </span>
