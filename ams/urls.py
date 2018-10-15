@@ -10,7 +10,6 @@ urlpatterns = [
     path('admin_page/', views.admin_page, name='admin_page'),
     path('billing/', views.billing, name='billing'),
 
-
     path('monthly_report/', views.monthly_report, name='monthly_report'),
     path('payment_individual/', views.payment_individual, name='payment_individual'),
     path('payment/', views.payment, name='payment'),
@@ -24,14 +23,14 @@ urlpatterns = [
     path('room_type_rate/', views.room_type_rate, name='room_type_rate'),
     path('current_tenant/', views.current_tenant, name='current_tenant'),
     path('vacant_rooms/', views.vacant_rooms, name='vacant_rooms'),
+
     path('misc_contents/', views.misc_contents, name='misc_contents'),
+
     path('send_sms_to_individual_room/', views.send_sms_to_individual_room, name='send_sms_to_individual_room'),
     path('send_general_sms/', views.send_general_sms, name='send_general_sms'),
-    path('send_bill_sms_to_all_tenants/', views.send_bill_sms_to_all_tenants, name='send_bil_sms_to_all_tenants'),
-
+    path('send_bill_sms_to_all_tenants/', views.send_bill_sms_to_all_tenants, name='send_bill_sms_to_all_tenants'),
 
     path('tenant_page/', views.tenant_page, name='tenant_page'),
-
 
     path('tenant_bill/', views.tenant_bill, name='tenant_bill'),
     path('new_tenant/', views.new_tenant, name='new_tenant'),

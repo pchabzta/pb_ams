@@ -26,6 +26,7 @@ from .forms import RM301B_BillForm, RM302B_BillForm, RM303B_BillForm, RM304B_Bil
 from .forms import RM401B_BillForm, RM402B_BillForm, RM403B_BillForm, RM404B_BillForm, RM405B_BillForm
 from ams.models import Billing
 import random
+import calendar
 
 import GV
 
@@ -88,7 +89,7 @@ def create_contract(request):
             # Save the ManyToMany
             tenant_profile_form.save_m2m()
 
-            messages.success(request, 'Profile updated successfully')
+            messages.success(request, 'Profile has been updated successfully')
 
             return HttpResponseRedirect(reverse_lazy('admin_page'))
         else:
@@ -103,11 +104,11 @@ def create_contract(request):
                   {'section': 'new_contract', 'tenant_form': tenant_form, 'tenant_profile_form': tenant_profile_form})
 
 
-# @login_required # ?????
+# @login_required # ????? #ORIGINAL
 def create_bill(room_no):
     pf = get_object_or_404(TenantProfile, room_no__room_no=room_no)
-
     tname = pf.tenant.first_name + ' ' + pf.tenant.last_name
+
     rno = pf.room_no.room_no
     adj = pf.adjust
 
@@ -153,6 +154,7 @@ def create_bill(room_no):
 
     total = room_cost + room_acc_cost + elec_cost + water_cost + com_ser_cost + oth_ser_cost + ovd_amt + adj + late_f + maint_c
 
+    # CREATE PRELIMINARY BILL OBJECT **************
     new_bill = Billing(bill_ref=get_ref_string(),
                        tenant_name=tname,
                        room_no=rno,
@@ -174,10 +176,99 @@ def create_bill(room_no):
 
                        )
 
-    # SAVE BILL & TENANTPROFILE TO DB
-    new_bill.save()
-
+    # SAVE TENANTPROFILE OBJECT TO DB
     pf.save()
+
+    # ADJUST PRELIMINARY BILL OBJECT
+    adjust_bill(pf, new_bill)
+
+
+def adjust_bill(pf, new_bill):
+    tn_bill = new_bill
+
+    # ----------------------------------------
+    bref = tn_bill.bill_ref
+    bdate = tn_bill.bill_date
+    # bupd # TO BE FILLED WHEN SAVED
+    # bstat # TO BE FILLED WHEN SAVED
+    tname = tn_bill.tenant_name
+    rno = tn_bill.room_no
+    room_cost = tn_bill.room_cost
+    room_acc_cost = tn_bill.room_acc_cost
+    elec_cost = tn_bill.electricity_cost
+    water_cost = tn_bill.water_cost
+    com_ser_cost = tn_bill.common_ser_cost
+    oth_ser_cost = tn_bill.other_ser_cost
+    ovd_amt = tn_bill.overdue_amount
+    adj = tn_bill.adjust
+    # total = tn_bill.bill_total # TO BE ADJUSTED IF REQUIRED
+
+    # pay_date # TO BE FILLED AT PAYMENT
+    # pay_amt #TO BE FILL AT PAYMENT
+    # bf #TO BE FILLED AT PAYMENT
+
+    late_f = tn_bill.late_fee
+    maint_c = tn_bill.maint_cost
+    # ----------------------------------------
+
+    # bdate = tn_bill.bill_date
+    sdate = pf.start_date  # FROM pf
+
+    start_day = sdate.day
+    bill_day = bdate.day
+
+    start_m = sdate.month
+    bill_m = bdate.month
+
+    number_of_day_in_start_month = calendar.monthrange(sdate.year, sdate.month)[1]
+    nodsm = number_of_day_in_start_month
+    number_of_day_in_bill_month = calendar.monthrange(bdate.year, bdate.month)[1]
+    nodbm = number_of_day_in_bill_month
+
+    # tname = pf.tenant.first_name + ' ' + pf.tenant.last_name
+    # rno = pf.room_no.room_no
+    # adj = pf.adjust
+
+    if abs(start_m - bill_m) == 0:
+        tbd = number_of_day_in_bill_month - start_day + 1  # SPECIAL CASE 1
+    elif abs(start_m - bill_m) == 1 and start_day >= bill_day:
+        tbd = number_of_day_in_bill_month + (number_of_day_in_start_month - start_day + 1)  # SPECIAL CASE 2
+    else:
+        tbd = number_of_day_in_bill_month  # ONGOING CASE
+
+    # ADJUST CERTAIN VALUES IN PRELIM. BILL OBJECT
+    room_cost = room_cost * (tbd / nodbm)
+    room_acc_cost = room_acc_cost * (tbd / nodbm)
+    com_ser_cost = com_ser_cost * (tbd / nodbm)
+    oth_ser_cost = oth_ser_cost * (tbd / nodbm)
+    adj = adj * (tbd / nodbm)
+    total = (room_cost + room_acc_cost + adj) + elec_cost + water_cost + (
+            com_ser_cost + oth_ser_cost) + ovd_amt + late_f + maint_c
+
+    # CREATE FINAL BILL OBJECT *******************
+    new_bill = Billing(bill_ref=bref,
+                       tenant_name=tname,
+                       room_no=rno,
+                       room_cost=room_cost,
+                       room_acc_cost=room_acc_cost,
+                       electricity_cost=elec_cost,
+                       water_cost=water_cost,
+                       common_ser_cost=com_ser_cost,
+                       other_ser_cost=oth_ser_cost,
+                       overdue_amount=ovd_amt,
+
+                       # -----------------------
+                       late_fee=late_f,
+                       maint_cost=maint_c,
+                       # -----------------------
+
+                       adjust=adj,
+                       bill_total=total,
+
+                       )
+
+    # SAVE BILL OBJECT TO DB
+    new_bill.save()
 
 
 @login_required
@@ -731,7 +822,7 @@ def billing(request):
 
         # -----------------
         # FOR PYTHONANYWHERE HOST (uncomment the following line !!)
-        # messages.success(request, 'Total {} bills created.'.format(no_of_bill))
+        # messages.success(request, 'Total {} bills have been created.'.format(no_of_bill))
         # -----------------
         return HttpResponseRedirect(reverse_lazy('admin_page'))
     else:
@@ -1407,8 +1498,6 @@ def payment(request):
                                                     })
 
 
-
-
 @login_required
 def report_type(request):
     return render(request, 'ams/report_type.html', {'section': 'report'})
@@ -1964,7 +2053,7 @@ def vacant_rooms(request):
     return render(request, 'ams/vacant_rooms.html', {'vac_rm_set': vac_rm_set, 'current_dt': current_dt})
 
 
-# -----------------------------------------------------------------------------------
+
 # SENDING MESSAGE FROM LOCALHOST AND FROM WEB !!!! **********************************************************
 def send_message(to_phone_no, msg):
     account_sid = GV.Account_SID
@@ -2052,7 +2141,7 @@ def send_bill_sms_to_all_tenants(request):
             # print(rmn_hp, ': ', bill_msg)
 
             # -------------------------------
-            send_message(rmn_hp, bill_msg)  # TURNED OFF-FOR TESTING
+            # send_message(rmn_hp, bill_msg)  # TURNED OFF-FOR TESTING
             # -------------------------------
             no_of_bills_sent += 1
 
@@ -2060,7 +2149,8 @@ def send_bill_sms_to_all_tenants(request):
                          'Billing SMS has been sent to: {} of {} rooms !!'.format(no_of_bills_sent, total_open_bills))
 
     else:
-        messages.info(request, 'No open bills available !!!')
+        messages.info(request, 'No open bills are available !!!')
+
 
     return HttpResponseRedirect(reverse_lazy('misc_contents'))
 
@@ -2116,7 +2206,7 @@ def send_sms_to_individual_room(request):
         else:
             return render(request, 'ams/send_sms_to_individual_room.html', {'bills': bills})
     else:
-        messages.info(request, 'No open bills available !!!')
+        messages.info(request, 'No open bills are available !!!')
     return HttpResponseRedirect(reverse_lazy('misc_contents'))
 
 
@@ -2141,6 +2231,7 @@ def send_general_sms(request):
     else:
         phone_msg_form = PhoneNoMessage()
         return render(request, 'ams/send_general_sms.html', {'phone_msg_form': phone_msg_form})
+
 
 
 @login_required
@@ -2651,7 +2742,8 @@ def write_to_excel_worksheet(request, excel_file, opbl):
         total_processed_rooms = len(opbl)
 
         messages.info(request,
-                      'Bill Slip: {0}\\{1} with Total {2} Rooms SAVED !'.format(cwd, excel_file, total_processed_rooms))
+                      'Bill Slip: {0}\\{1} with Total {2} Rooms have been SAVED !'.format(cwd, excel_file,
+                                                                                          total_processed_rooms))
 
     except Exception as err:
         give_error_message('Error: '.format(err))

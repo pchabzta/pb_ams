@@ -4,7 +4,7 @@
 
 # APPLICATION DETAIL
 app_name = 'Apartment Management System'
-app_version = 'Version 2018.2.0-web'
+app_version = 'Version 2018.1.3-web'
 
 # APARTMENT DETAIL
 apartment_name_thai = 'ชลลดา อพาร์ตเมนต์'
@@ -33,22 +33,6 @@ LATE_FEE_PER_DAY = 50 # O: TRUN OFF 50: TURN ON
 
 # COMMON SERVICE CHARGE (5 B/UNIT)
 COMMOM_SERVICE_CPU = 5 * 0  # O: TRUN OFF 5: TURN ON
-
-# EXTRA-DESCRIPTION
-EXTL_D = ['Electricity CPU',
-          'Water CPU',
-          'Garbage',
-          'Parking',
-          'Wifi',
-          'Cable TV',
-          'Bed',
-          'Bed accessories',
-          'Dressing Table',
-          'Clothing Cupboard',
-          'TV Table',
-          'Fridge',
-          'Air-Conditioner',
-          'Special adj. >>>']
 
 # BANK INFO. ********************************************************************************************************
 
