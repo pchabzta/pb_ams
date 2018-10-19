@@ -39,4 +39,7 @@ urlpatterns = [
     path('maintenance_charge/', views.maintenance_charge, name='maintenance_charge'),
     path('monthly_report_mini/', views.monthly_report_mini, name='monthly_report_mini'),
 
+    path('confirmation/', views.send_sms_confirmation, name='confirmation'),
+    path('send_sms_execution/', views.send_sms_execution, name='send_sms_execution'),
+
 ]

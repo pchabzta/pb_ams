@@ -31,7 +31,8 @@ class Billing(models.Model):
     STATUS_CHOICE = (('open', 'OPEN'), ('close', 'CLOSE'),)
 
     bill_ref = models.CharField(max_length=6)
-    bill_date = models.DateTimeField(auto_now_add=True)
+    # bill_date = models.DateTimeField(auto_now_add=True)
+    bill_date = models.DateField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=5, choices=STATUS_CHOICE, default='open')
     tenant_name = models.CharField(max_length=100)
@@ -62,7 +63,7 @@ class Billing(models.Model):
     def get_absolute_url(self):
         return reverse('pay_rent', args=[str(self.bill_ref)])
 
-
+# ??? PREPAID ??
 class TenantProfile(models.Model):
     tenant = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
@@ -78,7 +79,7 @@ class TenantProfile(models.Model):
     adjust = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     photo = models.ImageField(upload_to='users/%Y/%m/%d/', blank=True)
     extra = models.ManyToManyField(Extra)
-    bill_date = models.DateField(auto_now=True, blank=True)
+    bill_date = models.DateField(auto_now=True, blank=True) # ???????????????
 
     # USE PLACEHOLDER (NO DEFAULT VALUE) INITIAL VALUE TO BE PROVIDED WHEN SAVE TO DB
     elec_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)

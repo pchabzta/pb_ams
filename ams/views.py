@@ -28,6 +28,8 @@ from ams.models import Billing
 import random
 import calendar
 
+import decimal
+
 import GV
 
 import os
@@ -156,6 +158,7 @@ def create_bill(room_no):
 
     # CREATE PRELIMINARY BILL OBJECT **************
     new_bill = Billing(bill_ref=get_ref_string(),
+                       bill_date=datetime.datetime.now().date(),  # SUPPLY BILL DATE
                        tenant_name=tname,
                        room_no=rno,
                        room_cost=room_cost,
@@ -186,7 +189,6 @@ def create_bill(room_no):
 def adjust_bill(pf, new_bill):
     tn_bill = new_bill
 
-    # ----------------------------------------
     bref = tn_bill.bill_ref
     bdate = tn_bill.bill_date
     # bupd # TO BE FILLED WHEN SAVED
@@ -209,9 +211,7 @@ def adjust_bill(pf, new_bill):
 
     late_f = tn_bill.late_fee
     maint_c = tn_bill.maint_cost
-    # ----------------------------------------
 
-    # bdate = tn_bill.bill_date
     sdate = pf.start_date  # FROM pf
 
     start_day = sdate.day
@@ -225,10 +225,6 @@ def adjust_bill(pf, new_bill):
     number_of_day_in_bill_month = calendar.monthrange(bdate.year, bdate.month)[1]
     nodbm = number_of_day_in_bill_month
 
-    # tname = pf.tenant.first_name + ' ' + pf.tenant.last_name
-    # rno = pf.room_no.room_no
-    # adj = pf.adjust
-
     if abs(start_m - bill_m) == 0:
         tbd = number_of_day_in_bill_month - start_day + 1  # SPECIAL CASE 1
     elif abs(start_m - bill_m) == 1 and start_day >= bill_day:
@@ -237,11 +233,14 @@ def adjust_bill(pf, new_bill):
         tbd = number_of_day_in_bill_month  # ONGOING CASE
 
     # ADJUST CERTAIN VALUES IN PRELIM. BILL OBJECT
-    room_cost = room_cost * (tbd / nodbm)
-    room_acc_cost = room_acc_cost * (tbd / nodbm)
-    com_ser_cost = com_ser_cost * (tbd / nodbm)
-    oth_ser_cost = oth_ser_cost * (tbd / nodbm)
-    adj = adj * (tbd / nodbm)
+    const = decimal.Decimal((tbd / nodbm))
+
+    room_cost = room_cost * const
+    room_acc_cost = room_acc_cost * const
+    com_ser_cost = com_ser_cost * const
+    oth_ser_cost = oth_ser_cost * const
+    adj = adj * const
+
     total = (room_cost + room_acc_cost + adj) + elec_cost + water_cost + (
             com_ser_cost + oth_ser_cost) + ovd_amt + late_f + maint_c
 
@@ -2017,7 +2016,6 @@ def water_cpu_change(request):
 @login_required
 def room_type_rate(request):
     rm_type_rate = Room_type.objects.all()
-
     current_dt = datetime.datetime.now()
 
     return render(request, 'ams/room_type_rate.html', {'rm_type_rate': rm_type_rate, 'current_dt': current_dt})
@@ -2053,6 +2051,31 @@ def vacant_rooms(request):
     return render(request, 'ams/vacant_rooms.html', {'vac_rm_set': vac_rm_set, 'current_dt': current_dt})
 
 
+# --------------------------------------------
+
+@login_required
+def send_sms_confirmation(request):
+    open_bill = Billing.objects.filter(status='open').order_by('id')
+    active_tenant = TenantProfile.objects.all()
+
+    total_opb = open_bill.count()
+    total_tenant = active_tenant.count()
+
+    return render(request, 'ams/confirmation.html', {'total_opb': total_opb, 'total_tenant': total_tenant})
+
+
+@login_required
+def send_sms_execution(request):
+    val = request.POST['radbt']
+
+    if val == 'ng':
+        return render(request, 'ams/misc_contents.html')
+    else:
+        send_bill_sms_to_all_tenants(request)
+        return HttpResponseRedirect(reverse_lazy('misc_contents'))
+
+
+# --------------------------------------------
 
 # SENDING MESSAGE FROM LOCALHOST AND FROM WEB !!!! **********************************************************
 def send_message(to_phone_no, msg):
@@ -2093,10 +2116,11 @@ def send_message(to_phone_no, msg):
 @login_required
 def send_bill_sms_to_all_tenants(request):
     bills = Billing.objects.filter(status='open').order_by('id')
+    total_tenant = TenantProfile.objects.all().count()
 
     if bills:
 
-        total_open_bills = len(bills)
+        total_open_bills = total_tenant
         no_of_bills_sent = 0
         for rmn_bill in bills:
             rmn = rmn_bill.room_no
@@ -2104,11 +2128,15 @@ def send_bill_sms_to_all_tenants(request):
             rmn_pf = get_object_or_404(TenantProfile, room_no__room_no=rmn)
 
             # --------------------------------------------------
-            # rmn_hp = rmn_pf.phone # TEMP. OFF
-            rmn_hp = '0840860087'  # TESTING ONLY'
+            if GV.SMS_TO_ALL_ROOMS:
+                rmn_hp = rmn_pf.phone
+                # print('True')
+            else:
+                rmn_hp = '0840860087'  # TESTING ONLY'
+                # print('False')
             # -------------------------------------------------
 
-            bill_dt = rmn_bill.bill_date.date()
+            bill_dt = rmn_bill.bill_date
             cur_mth = bill_dt.month
             cur_yr = bill_dt.year
             cur_th_mth = get_thai_month_name(str(bill_dt))
@@ -2141,7 +2169,7 @@ def send_bill_sms_to_all_tenants(request):
             # print(rmn_hp, ': ', bill_msg)
 
             # -------------------------------
-            # send_message(rmn_hp, bill_msg)  # TURNED OFF-FOR TESTING
+            send_message(rmn_hp, bill_msg)  # TURNED OFF-FOR TESTING
             # -------------------------------
             no_of_bills_sent += 1
 
@@ -2151,8 +2179,7 @@ def send_bill_sms_to_all_tenants(request):
     else:
         messages.info(request, 'No open bills are available !!!')
 
-
-    return HttpResponseRedirect(reverse_lazy('misc_contents'))
+    # return HttpResponseRedirect(reverse_lazy('misc_contents'))
 
 
 @login_required
@@ -2164,7 +2191,7 @@ def send_sms_to_individual_room(request):
             rn = request.POST['rmn']
             rmn_bill = get_object_or_404(Billing, room_no=rn, status='open')
 
-            bill_dt = rmn_bill.bill_date.date()
+            bill_dt = rmn_bill.bill_date
             cur_mth = bill_dt.month
             cur_yr = bill_dt.year
             cur_th_mth = get_thai_month_name(str(bill_dt))
@@ -2233,7 +2260,6 @@ def send_general_sms(request):
         return render(request, 'ams/send_general_sms.html', {'phone_msg_form': phone_msg_form})
 
 
-
 @login_required
 def misc_contents(request):
     return render(request, 'ams/misc_contents.html', {'section': 'misc'})
@@ -2282,7 +2308,7 @@ def tenant_page(request):
 
 
 def tenant_bill_subroutine(tn_bill):
-    bill_dt = tn_bill.bill_date.date()
+    bill_dt = tn_bill.bill_date
     pay_date = tn_bill.payment_date
     cur_mth = bill_dt.month
     cur_yr = bill_dt.year

@@ -1,0 +1,47 @@
+{% extends "ams_admin_base_html.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Electricity CPU{% endblock %}
+
+{% block script %}
+    <link href="{% static "css/ams_body.css" %}" rel="stylesheet">
+{% endblock %}
+
+{% block style %}
+
+    <style>
+        div.submit button {
+            width: 6em;
+            font-size: large;
+            background-color: red;
+            color: white;
+            margin-top: .5em;
+            padding: .3em;
+        }
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+
+    <form name="radio_bt" action="{% url "send_sms_execution" %}" method="post">
+        {% csrf_token %}
+
+        <strong>Are you sure you want to send SMS to {{ total_opb }} of {{ total_tenant }} rooms ?</strong><br><br>
+
+        <input type="radio" id="yes" name="radbt" value="go">
+        <label for="yes">YES</label><br><br>
+
+        <input type="radio" id="no" name="radbt" value="ng" checked>
+        <label for="no">NO</label><br><br>
+
+
+        <div class="submit">
+            <button type="submit">Confirm</button>
+        </div>
+
+    </form>
+
+{% endblock %}
