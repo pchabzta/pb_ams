@@ -59,9 +59,9 @@ class Billing(models.Model):
     def __str__(self):
         return 'Bill for room number: {} Status: {}'.format(self.room_no, self.status)
 
-
     def get_absolute_url(self):
         return reverse('pay_rent', args=[str(self.bill_ref)])
+
 
 # ??? PREPAID ??
 class TenantProfile(models.Model):
@@ -79,7 +79,7 @@ class TenantProfile(models.Model):
     adjust = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     photo = models.ImageField(upload_to='users/%Y/%m/%d/', blank=True)
     extra = models.ManyToManyField(Extra)
-    bill_date = models.DateField(auto_now=True, blank=True) # ???????????????
+    bill_date = models.DateField(auto_now=True, blank=True)  # ???????????????
 
     # USE PLACEHOLDER (NO DEFAULT VALUE) INITIAL VALUE TO BE PROVIDED WHEN SAVE TO DB
     elec_unit = models.DecimalField(max_digits=7, decimal_places=2, null=True)

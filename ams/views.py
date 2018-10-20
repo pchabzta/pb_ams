@@ -817,11 +817,11 @@ def billing(request):
     if request.method == 'POST':
 
         # WRITE TO BILL SUMMARY AND BILL SLIP (Localhost only, at this time !!!!)
-        create_exel_sheet(request)
+        # create_exel_sheet(request)
 
         # -----------------
         # FOR PYTHONANYWHERE HOST (uncomment the following line !!)
-        # messages.success(request, 'Total {} bills have been created.'.format(no_of_bill))
+        messages.success(request, 'Total {} bills have been created.'.format(no_of_bill))
         # -----------------
         return HttpResponseRedirect(reverse_lazy('admin_page'))
     else:
@@ -2077,6 +2077,7 @@ def send_sms_execution(request):
 
 # --------------------------------------------
 
+
 # SENDING MESSAGE FROM LOCALHOST AND FROM WEB !!!! **********************************************************
 def send_message(to_phone_no, msg):
     account_sid = GV.Account_SID
@@ -2130,10 +2131,8 @@ def send_bill_sms_to_all_tenants(request):
             # --------------------------------------------------
             if GV.SMS_TO_ALL_ROOMS:
                 rmn_hp = rmn_pf.phone
-                # print('True')
             else:
                 rmn_hp = '0840860087'  # TESTING ONLY'
-                # print('False')
             # -------------------------------------------------
 
             bill_dt = rmn_bill.bill_date
@@ -2169,7 +2168,7 @@ def send_bill_sms_to_all_tenants(request):
             # print(rmn_hp, ': ', bill_msg)
 
             # -------------------------------
-            send_message(rmn_hp, bill_msg)  # TURNED OFF-FOR TESTING
+            send_message(rmn_hp, bill_msg)
             # -------------------------------
             no_of_bills_sent += 1
 
@@ -2179,7 +2178,7 @@ def send_bill_sms_to_all_tenants(request):
     else:
         messages.info(request, 'No open bills are available !!!')
 
-    # return HttpResponseRedirect(reverse_lazy('misc_contents'))
+    return HttpResponseRedirect(reverse_lazy('misc_contents'))
 
 
 @login_required
